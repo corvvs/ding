@@ -1,0 +1,6 @@
+*.o
+libft.a
+m.c
+libft-unit-test
+libft-tester-tokyo
+libftTester
