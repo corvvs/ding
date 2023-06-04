@@ -45,11 +45,25 @@ typedef struct timeval timeval_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
+// 統計情報の元データを管理する構造体
+typedef struct s_stat_data {
+	// 送信済みパケット数
+	size_t	packets_sent;
+	// 受信済みパケット数
+	size_t	packets_receipt;
+	// ラウンドトリップ数
+	double*	rtts;
+	// ラウンドトリップ数のキャパシティ
+	size_t	rtts_cap;
+}	t_stat_data;
+
+// オプション構造体
 typedef struct s_options
 {
 
 } t_options;
 
+// マスター構造体
 typedef struct s_ping
 {
 	const char*	target;

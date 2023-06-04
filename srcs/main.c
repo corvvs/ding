@@ -48,11 +48,6 @@ size_t	set_timestamp_for_data(uint8_t* data_buffer, size_t buffer_len) {
 	timeval_t	tm;
 	gettimeofday(&tm, NULL);
 	ft_memcpy(data_buffer, &tm, sizeof(timeval_t));
-	DEBUGOUT("tv_sec: %ld", tm.tv_sec);
-	DEBUGOUT("tv_usec: %ld", tm.tv_usec);
-	DEBUGOUT("set: %ld %lx", *(long*)data_buffer, *(long*)data_buffer);
-	DEBUGOUT("set: %ld %lx", *(long*)(data_buffer + sizeof(long)), *(long*)(data_buffer + sizeof(long)));
-	DEBUGOUT("sizeof(timeval_t): %zu", sizeof(timeval_t));
 	return sizeof(timeval_t);
 }
 
@@ -94,6 +89,41 @@ void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len) {
 	DEBUGOUT("checksum: %d", icmp_hd->ICMP_HEADER_CHECKSUM);
 }
 
+// ICMP Echo Request を送信
+int	send_ping(
+	const t_ping* ping,
+	const uint8_t* datagram_buffer,
+	size_t datagram_len,
+	const struct sockaddr_in* addr
+) {
+	int rv = sendto(
+		ping->socket_fd,
+		datagram_buffer, datagram_len,
+		0,
+		(struct sockaddr *)addr, sizeof(struct sockaddr_in)
+	);
+	DEBUGOUT("sendto rv: %d", rv);
+	if (rv < 0) {
+		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
+	}
+	return rv;
+}
+
+int	recv_ping(
+	const t_ping* ping,
+	struct msghdr* msg
+) {
+
+	int rv = recvmsg(
+		ping->socket_fd,
+		msg,
+		0
+	);
+	if (rv < 0) {
+		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
+	}
+	return rv;
+}
 
 // 1つの宛先に対して ping セッションを実行する
 int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
@@ -103,84 +133,66 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 		ping->target, inet_ntoa(addr->sin_addr), datagram_payload_len);
 
 	// [ICMPヘッダを準備する]
-	uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
-	deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
+	for (size_t	sequence = 0; ; sequence += 1) {
+		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
+		deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
 
-	const double epoch_sent_ms = get_current_epoch_ms();
-	// 送信!!
-	{
-		int rv = sendto(
-			ping->socket_fd,
-			datagram_buffer, ICMP_ECHO_DATAGRAM_SIZE,
-			0,
-			(struct sockaddr *)addr, sizeof(struct sockaddr_in)
-		);
-		DEBUGOUT("sendto rv: %d", rv);
-		if (rv < 0) {
-			DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
-			return rv;
+		const double epoch_sent_ms = get_current_epoch_ms();
+		// 送信!!
+		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr) < 0) {
+			return -1;
 		}
-	}
 
-	// ECHO応答の受信を待機する
-	{
+		// ECHO応答の受信を待機する
 		uint8_t*	recv_buffer = malloc(4096);
-		ft_memset(recv_buffer, 0, 4096);
-		uint8_t		ans_data[4096] = {};
-		struct msghdr msg;
-		struct iovec iov;
-		struct sockaddr_in sa;
-		ft_memset(&msg, 0, sizeof(msg));
-		msg.msg_name = &sa;
-		msg.msg_namelen = sizeof(sa);
-		msg.msg_iov = &iov;
-		msg.msg_iovlen = 1;
-		msg.msg_control = ans_data;
-		msg.msg_controllen = sizeof(ans_data);
-		iov.iov_base = recv_buffer;
-		iov.iov_len = 4096;
-
-		int rv = recvmsg(
-			ping->socket_fd,
-			&msg,
-			0
-		);
-		if (rv < 0) {
-			DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
-			free(recv_buffer);
-			return rv;
-		} 
+		struct msghdr		msg;
+		struct iovec		iov;
+		struct sockaddr_in	sa;
+		size_t				recv_size = 0;
+		{
+			ft_memset(&msg, 0, sizeof(msg));
+			msg.msg_name = &sa;
+			msg.msg_namelen = sizeof(sa);
+			msg.msg_iov = &iov;
+			msg.msg_iovlen = 1;
+			iov.iov_base = recv_buffer;
+			iov.iov_len = 4096;
+			int rv = recv_ping(ping, &msg);
+			if (rv < 0) {
+				return -1;
+			}
+			recv_size = rv;
+			debug_hexdump("recv_buffer", recv_buffer, recv_size);
+		}
 		const double epoch_receipt_ms = get_current_epoch_ms();
 
-		DEBUGOUT("recvmsg rv: %d", rv);
 		printf("Received ICMP packet from %s\n", inet_ntoa(sa.sin_addr));
 
-		debug_hexdump("recv_buffer", recv_buffer, rv);
 		// debug_hexdump("msg_control", msg.msg_control, rv);
 
-		print_msg_flags(&msg);
+		// print_msg_flags(&msg);
 
 		// TODO: 受信サイズ >= IPヘッダのサイズ であることを確認する
 
 		ip_convert_endiandd(recv_buffer);
 
-		debug_ip_header(recv_buffer);
+		// debug_ip_header(recv_buffer);
 
 		const ip_header_t*	ip_hd = (ip_header_t*)recv_buffer;
 		// TODO: 受信サイズ == トータルサイズ であることを確認する
-		if (rv != ip_hd->tot_len) {
-			DEBUGERR("size doesn't match: rv: %d, tot_len: %u", rv, ip_hd->tot_len);
+		if (recv_size != ip_hd->tot_len) {
+			DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, ip_hd->tot_len);
 			return -1;
 		}
 		const size_t	ip_header_len = ip_hd->ihl * 4;
 		DEBUGOUT("ip_header_len: %zu", ip_header_len);
 		// CHECK: ip_header_len >= sizeof(ip_header_t)
-		const size_t	icmp_len = (size_t)rv  - ip_header_len;
+		const size_t	icmp_len = recv_size  - ip_header_len;
 		DEBUGOUT("icmp_len: %zu", icmp_len);
 		icmp_header_t*	icmp_header = (icmp_header_t*)(recv_buffer + ip_header_len);
 		icmp_convert_endian(icmp_header);
 
-		debug_icmp_header(icmp_header);
+		// debug_icmp_header(icmp_header);
 
 		// TODO:
 		// 受信したものが「先立って自分が送ったICMP Echo Request」に対応する ICMP Echo Reply であることを確認する.
@@ -211,6 +223,7 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 
 
 		free(recv_buffer);
+		sleep(1);
 	}
 
 
