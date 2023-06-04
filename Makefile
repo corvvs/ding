@@ -6,6 +6,7 @@ FILES	:=	\
 			ip.c\
 			icmp.c\
 			endian.c\
+			time.c\
 			debug.c\
 
 SRCS	:=	$(FILES:%.c=$(SRCDIR)/%.c)

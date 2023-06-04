@@ -44,16 +44,16 @@ uint16_t	derive_icmp_checksum(const void* datagram, size_t len) {
 }
 
 size_t	set_timestamp_for_data(uint8_t* data_buffer, size_t buffer_len) {
-	if (buffer_len < sizeof(struct timeval)) { return 0; }
-	struct timeval	tm;
+	if (buffer_len < sizeof(timeval_t)) { return 0; }
+	timeval_t	tm;
 	gettimeofday(&tm, NULL);
-	ft_memcpy(data_buffer, &tm, sizeof(struct timeval));
+	ft_memcpy(data_buffer, &tm, sizeof(timeval_t));
 	DEBUGOUT("tv_sec: %ld", tm.tv_sec);
 	DEBUGOUT("tv_usec: %ld", tm.tv_usec);
 	DEBUGOUT("set: %ld %lx", *(long*)data_buffer, *(long*)data_buffer);
 	DEBUGOUT("set: %ld %lx", *(long*)(data_buffer + sizeof(long)), *(long*)(data_buffer + sizeof(long)));
-	DEBUGOUT("sizeof(struct timeval): %zu", sizeof(struct timeval));
-	return sizeof(struct timeval);
+	DEBUGOUT("sizeof(timeval_t): %zu", sizeof(timeval_t));
+	return sizeof(timeval_t);
 }
 
 void	print_msg_flags(const struct msghdr* msg) {
@@ -97,11 +97,16 @@ void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len) {
 
 // 1つの宛先に対して ping セッションを実行する
 int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
+	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
+	// 送信前出力
+	printf("PING %s (%s): %zu data bytes\n",
+		ping->target, inet_ntoa(addr->sin_addr), datagram_payload_len);
 
 	// [ICMPヘッダを準備する]
 	uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
 	deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
 
+	const double epoch_sent_ms = get_current_epoch_ms();
 	// 送信!!
 	{
 		int rv = sendto(
@@ -145,6 +150,7 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 			free(recv_buffer);
 			return rv;
 		} 
+		const double epoch_receipt_ms = get_current_epoch_ms();
 
 		DEBUGOUT("recvmsg rv: %d", rv);
 		printf("Received ICMP packet from %s\n", inet_ntoa(sa.sin_addr));
@@ -175,6 +181,34 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 		icmp_convert_endian(icmp_header);
 
 		debug_icmp_header(icmp_header);
+
+		// TODO:
+		// 受信したものが「先立って自分が送ったICMP Echo Request」に対応する ICMP Echo Reply であることを確認する.
+		// 具体的には:
+		// - IP
+		//   - Reply の送信元が, Request の送信先であること
+		// - ICMP
+		//   - Type = 0 であること
+		//   - Reply のID, Sequenceが, Request のID, Sequence と一致すること
+		//   - チェックサムがgoodであること
+
+
+		// 受信時出力
+		// printf ("%d bytes from %s: icmp_seq=%u", datalen,
+		// 	inet_ntoa (*(struct in_addr *) &from->sin_addr.s_addr),
+		// 	ntohs (icmp->icmp_seq));
+		// printf (" ttl=%d", ip->ip_ttl);
+		// if (timing)
+		// 	printf (" time=%.3f ms", triptime);
+		const double	triptime = epoch_receipt_ms - epoch_sent_ms;
+		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+			icmp_len,
+			inet_ntoa(sa.sin_addr),
+			icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+			ip_hd->ttl,
+			triptime
+		);
+
 
 		free(recv_buffer);
 	}
