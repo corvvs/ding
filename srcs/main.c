@@ -182,6 +182,33 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 
 		debug_icmp_header(icmp_header);
 
+		// TODO:
+		// 受信したものが「先立って自分が送ったICMP Echo Request」に対応する ICMP Echo Reply であることを確認する.
+		// 具体的には:
+		// - IP
+		//   - Reply の送信元が, Request の送信先であること
+		// - ICMP
+		//   - Type = 0 であること
+		//   - Reply のID, Sequenceが, Request のID, Sequence と一致すること
+		//   - チェックサムがgoodであること
+
+
+		// 受信時出力
+		// printf ("%d bytes from %s: icmp_seq=%u", datalen,
+		// 	inet_ntoa (*(struct in_addr *) &from->sin_addr.s_addr),
+		// 	ntohs (icmp->icmp_seq));
+		// printf (" ttl=%d", ip->ip_ttl);
+		// if (timing)
+		// 	printf (" time=%.3f ms", triptime);
+		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+			icmp_len,
+			inet_ntoa(sa.sin_addr),
+			icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+			ip_hd->ttl,
+			0.0
+		);
+
+
 		free(recv_buffer);
 	}
 
