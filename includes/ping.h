@@ -40,6 +40,7 @@ typedef struct icmphdr	icmp_header_t;
 #endif
 
 typedef struct iphdr ip_header_t;
+typedef struct timeval timeval_t;
 
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
@@ -68,6 +69,10 @@ bool		is_little_endian(void);
 uint16_t	swap_2byte(uint16_t value);
 uint32_t	swap_4byte(uint32_t value);
 uint64_t	swap_8byte(uint64_t value);
+
+// time.c
+timeval_t	get_current_time(void);
+double		get_current_epoch_ms(void);
 
 // debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);
