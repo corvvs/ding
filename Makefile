@@ -3,6 +3,10 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
+			ip.c\
+			icmp.c\
+			endian.c\
+			debug.c\
 
 SRCS	:=	$(FILES:%.c=$(SRCDIR)/%.c)
 OBJS	:=	$(FILES:%.c=$(OBJDIR)/%.o)
@@ -12,7 +16,7 @@ LIBFT		:=	libft.a
 LIBFT_DIR	:=	libft
 CC			:=	gcc
 CCOREFLAGS	=	-Wall -Wextra -Werror -O2 -I$(INCDIR) -I$(LIBFT_DIR)
-CFLAGS		=	$(CCOREFLAGS) -g #-fsanitize=address -fsanitize=undefined
+CFLAGS		=	$(CCOREFLAGS) -D DEBUG -g -fsanitize=address -fsanitize=undefined
 RM			:=	rm -rf
 
 all:			$(NAME)
