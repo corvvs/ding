@@ -101,6 +101,12 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 	// [ICMPヘッダを準備する]
 	uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
 	deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
+	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
+
+	// 送信前出力
+	printf("PING %s (%s): %zu data bytes\n",
+		ping->target, inet_ntoa(addr->sin_addr), datagram_payload_len);
+
 
 	// 送信!!
 	{
