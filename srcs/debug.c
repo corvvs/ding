@@ -25,8 +25,18 @@ void	debug_ip_header(const void* mem) {
 	dprintf(STDERR_FILENO, "  ip_ttl: %u\n", ip_hd->ttl);
 	dprintf(STDERR_FILENO, "  ip_p: %u\n", ip_hd->protocol);
 	dprintf(STDERR_FILENO, "  ip_sum: %u(%X)\n", ip_hd->check, ip_hd->check);
-	// dprintf(STDERR_FILENO, "  ip_src: %s\n", inet_ntoa(ip_hd->saddr));
-	// dprintf(STDERR_FILENO, "  ip_dst: %s\n", inet_ntoa(ip_hd->daddr));
+	dprintf(STDERR_FILENO, "  ip_src: %u.%u.%u.%u\n",
+		(ip_hd->saddr >> 24) & 0xff,
+		(ip_hd->saddr >> 16) & 0xff,
+		(ip_hd->saddr >> 8) & 0xff,
+		(ip_hd->saddr >> 0) & 0xff
+	);
+	dprintf(STDERR_FILENO, "  ip_dst: %u.%u.%u.%u\n",
+		(ip_hd->daddr >> 24) & 0xff,
+		(ip_hd->daddr >> 16) & 0xff,
+		(ip_hd->daddr >> 8) & 0xff,
+		(ip_hd->daddr >> 0) & 0xff
+	);
 }
 
 void	debug_icmp_header(const void* mem) {

@@ -6,7 +6,7 @@ int	g_is_little_endian;
 socket_address_in_t	retrieve_addr(const t_ping* ping) {
 	socket_address_in_t addr = {};
 	addr.sin_family = AF_INET;
-	inet_pton(AF_INET, ping->target.given_host, &addr.sin_addr);
+	inet_pton(AF_INET, ping->target.resolved_host, &addr.sin_addr);
 	return addr;
 }
 
@@ -61,7 +61,7 @@ void	print_msg_flags(const struct msghdr* msg) {
 	DEBUGINFO("MSG_ERRQUEUE: %d", !!(msg->msg_flags & MSG_ERRQUEUE)); // ソケットのエラーキューからエラーを受信した
 }
 
-void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len) {
+void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len, uint16_t sequence) {
 	// ASSERT(datagram_len >= sizeof(icmp_header_t));
 	icmp_header_t*	icmp_hd = (icmp_header_t*)datagram_buffer;
 	uint8_t*		icmp_dt = (void*)datagram_buffer + sizeof(icmp_header_t);
@@ -70,7 +70,13 @@ void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len) {
 	icmp_hd->ICMP_HEADER_TYPE = ICMP_ECHO_REQUEST;
 	icmp_hd->ICMP_HEADER_CODE = 0;
 	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = getpid();
-	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = 0;
+	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = sequence;
+
+	// エンディアン変換
+	icmp_hd->ICMP_HEADER_TYPE = SWAP_NEEDED(icmp_hd->ICMP_HEADER_TYPE);
+	icmp_hd->ICMP_HEADER_CODE = SWAP_NEEDED(icmp_hd->ICMP_HEADER_CODE);
+	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID);
+	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ);
 
 	size_t	data_offset = 0;
 
@@ -143,11 +149,11 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 	signal(SIGINT, sig_int);
 
 	// [ICMPヘッダを準備する]
-	for (size_t	sequence = 0; g_interrupted == 0; sequence += 1) {
+	for (uint16_t	sequence = 0; g_interrupted == 0; sequence += 1) {
 
 
 		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
-		deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
+		deploy_datagram(datagram_buffer, sizeof(datagram_buffer), sequence);
 
 		// 送信!!
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr) < 0) {
@@ -185,7 +191,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 		ip_convert_endian(recv_buffer);
 
 		// print_msg_flags(&msg);
-		// debug_ip_header(recv_buffer);
+		debug_ip_header(recv_buffer);
 
 		const ip_header_t*	ip_hd = (ip_header_t*)recv_buffer;
 		// TODO: 受信サイズ == トータルサイズ であることを確認する
