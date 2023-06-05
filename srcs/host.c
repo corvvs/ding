@@ -10,12 +10,14 @@ int	resolve_host(t_target* target) {
 	DEBUGWARN("status: %d", status);
 	if (status < 0) {
 		printf("ping: unknown host\n");
+		freeaddrinfo(res);
 		return -1;
 	}
 	DEBUGWARN("ai_family: %d", res->ai_family);
 	DEBUGWARN("AF_INET: %d", AF_INET);
 	if (res->ai_family != AF_INET) {
 		DEBUGERR("res->ai_family is not AF_INET: %d", res->ai_family);
+		freeaddrinfo(res);
 		return -1;
 	}
 	const void*	resolved = inet_ntop(
@@ -24,6 +26,7 @@ int	resolve_host(t_target* target) {
 		target->resolved_host,
 		sizeof(target->resolved_host)
 	);
+	freeaddrinfo(res);
 	if (resolved == NULL) {
 		DEBUGERR("inet_ntop failed: %d(%s)", errno, strerror(errno));
 		printf("ping: unknown host\n");
