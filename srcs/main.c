@@ -3,10 +3,10 @@
 int	g_is_little_endian;
 
 // 与えられた宛先から sockaddr_in を生成する
-struct sockaddr_in	retrieve_addr(const t_ping* ping) {
-	struct sockaddr_in addr = {};
+socket_address_in_t	retrieve_addr(const t_ping* ping) {
+	socket_address_in_t addr = {};
 	addr.sin_family = AF_INET;
-	inet_pton(AF_INET, ping->target, &addr.sin_addr);
+	inet_pton(AF_INET, ping->target.given_host, &addr.sin_addr);
 	return addr;
 }
 
@@ -94,13 +94,13 @@ int	send_ping(
 	const t_ping* ping,
 	const uint8_t* datagram_buffer,
 	size_t datagram_len,
-	const struct sockaddr_in* addr
+	const socket_address_in_t* addr
 ) {
 	int rv = sendto(
 		ping->socket_fd,
 		datagram_buffer, datagram_len,
 		0,
-		(struct sockaddr *)addr, sizeof(struct sockaddr_in)
+		(struct sockaddr *)addr, sizeof(socket_address_in_t)
 	);
 	DEBUGOUT("sendto rv: %d", rv);
 	if (rv < 0) {
@@ -126,11 +126,11 @@ int	recv_ping(
 }
 
 // 1つの宛先に対して ping セッションを実行する
-int	run_ping_session(t_ping* ping, const struct sockaddr_in* addr) {
+int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
 	// 送信前出力
 	printf("PING %s (%s): %zu data bytes\n",
-		ping->target, inet_ntoa(addr->sin_addr), datagram_payload_len);
+		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
 
 	// [ICMPヘッダを準備する]
 	for (size_t	sequence = 0; ; sequence += 1) {
@@ -147,7 +147,7 @@ int	run_ping_session(t_ping* ping, const struct sockaddr_in* addr) {
 		uint8_t*	recv_buffer = malloc(4096);
 		struct msghdr		msg;
 		struct iovec		iov;
-		struct sockaddr_in	sa;
+		socket_address_in_t	sa;
 		size_t				recv_size = 0;
 		{
 			ft_memset(&msg, 0, sizeof(msg));
@@ -228,7 +228,9 @@ int main(int argc, char **argv) {
 	(void)argc;
 	(void)argv;
 	t_ping ping = {
-		.target = "8.8.8.8",
+		.target = {
+			.given_host = "google.com ",
+		}
 	};
 
 	g_is_little_endian = is_little_endian();
@@ -239,8 +241,15 @@ int main(int argc, char **argv) {
 	ping.socket_fd = create_icmp_socket();
 
 	{
+		if (resolve_host(&ping.target)) {
+			return -1;
+		}
+		DEBUGWARN("given:    %s", ping.target.given_host);
+		DEBUGWARN("resolved: %s", ping.target.resolved_host);
+
+
 		// [アドレス変換]
-		struct sockaddr_in	addr = retrieve_addr(&ping);
+		socket_address_in_t	addr = retrieve_addr(&ping);
 
 		// [エコー送信]
 		run_ping_session(&ping, &addr);

@@ -3,6 +3,7 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
+			host.c\
 			ip.c\
 			icmp.c\
 			endian.c\
