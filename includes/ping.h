@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <sys/socket.h>
@@ -41,6 +42,8 @@ typedef struct icmphdr	icmp_header_t;
 
 typedef struct iphdr ip_header_t;
 typedef struct timeval timeval_t;
+typedef struct addrinfo	address_info_t;
+typedef struct sockaddr_in	socket_address_in_t;
 
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
@@ -63,14 +66,25 @@ typedef struct s_options
 
 } t_options;
 
+// ターゲット構造体
+typedef struct s_target
+{
+	const char*	given_host;
+	char		resolved_host[16];
+} t_target;
+
 // マスター構造体
 typedef struct s_ping
 {
-	const char*	target;
+	t_target	target;
+
 	int			socket_fd;
 	t_stat_data	stat_data;
 	t_options options;
 } t_ping;
+
+// host.c
+int	resolve_host(t_target* target);
 
 // ip.c
 void	ip_convert_endian(void* mem);

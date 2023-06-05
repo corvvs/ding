@@ -2,7 +2,7 @@
 
 typedef union u_endian_field {
 	uint32_t	u;
-	char		c[4];
+	uint8_t		c[4];
 }	t_endian_field;
 
 // 現在の環境がリトルエンディアンかどうかを返す
