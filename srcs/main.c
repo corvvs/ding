@@ -162,6 +162,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 				return -1;
 			}
 			recv_size = rv;
+			DEBUGOUT("msg.msg_namelen: %u", msg.msg_namelen);
 			debug_hexdump("recv_buffer", recv_buffer, recv_size);
 		}
 		const double triptime = mark_receipt(ping, epoch_sent_ms);
@@ -182,6 +183,18 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 		}
 		const size_t	ip_header_len = ip_hd->ihl * 4;
 		DEBUGOUT("ip_header_len: %zu", ip_header_len);
+		DEBUGOUT("ip_hd->saddr: %u.%u.%u.%u",
+			(ip_hd->saddr >> 24) & 0xff,
+			(ip_hd->saddr >> 16) & 0xff,
+			(ip_hd->saddr >> 8) & 0xff,
+			(ip_hd->saddr >> 0) & 0xff
+		);
+		DEBUGOUT("ip_hd->daddr: %u.%u.%u.%u",
+			(ip_hd->daddr >> 24) & 0xff,
+			(ip_hd->daddr >> 16) & 0xff,
+			(ip_hd->daddr >> 8) & 0xff,
+			(ip_hd->daddr >> 0) & 0xff
+		);
 		// CHECK: ip_header_len >= sizeof(ip_header_t)
 		const size_t	icmp_len = recv_size  - ip_header_len;
 		DEBUGOUT("icmp_len: %zu", icmp_len);
@@ -204,7 +217,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 		// 受信時出力
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 			icmp_len,
-			inet_ntoa(sa.sin_addr),
+			ping->target.resolved_host,
 			icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
 			ip_hd->ttl,
 			triptime
