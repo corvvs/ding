@@ -239,10 +239,11 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 }
 
 int main(int argc, char **argv) {
-	(void)argc;
-	(void)argv;
+	if (argc < 0) {
+		return 1;
+	}
 
-	// TODO: プログラム名を控える
+	// NOTE: プログラム名は使用しない
 	argc -= 1;
 	argv += 1;
 
