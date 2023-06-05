@@ -14,5 +14,5 @@ void	ip_convert_endian(void* mem) {
 	ip_hd->protocol = SWAP_NEEDED(ip_hd->protocol);
 	ip_hd->check = SWAP_NEEDED(ip_hd->check);
 	ip_hd->saddr = SWAP_NEEDED(ip_hd->saddr);
-	ip_hd->saddr = SWAP_NEEDED(ip_hd->saddr);
+	ip_hd->daddr = SWAP_NEEDED(ip_hd->daddr);
 }
