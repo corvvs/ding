@@ -8,17 +8,19 @@ static void	extend_buffer(t_stat_data* stat_data) {
 	stat_data->rtts = extended;
 }
 
-double	mark_sent(t_ping* ping) {
+timeval_t	mark_sent(t_ping* ping) {
 	ping->stat_data.packets_sent += 1;
-	return get_current_epoch_ms();
+	return get_current_time();
 }
 
-double	mark_receipt(t_ping* ping, double epoch_sent_ms) {
+double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent) {
 	if (ping->stat_data.packets_receipt >= ping->stat_data.rtts_cap) {
 		extend_buffer(&ping->stat_data);
 	}
-	double epoch_receipt_ms = get_current_epoch_ms();
-	double rtt = epoch_receipt_ms - epoch_sent_ms;
+	timeval_t epoch_receipt = get_current_time();
+	double rtt =
+		(epoch_receipt.tv_sec - epoch_sent->tv_sec) * 1000.0 +
+		(epoch_receipt.tv_usec - epoch_sent->tv_usec) / 1000.0;
 	ping->stat_data.rtts[ping->stat_data.packets_receipt] = rtt;
 	ping->stat_data.packets_receipt += 1;
 	return rtt;

@@ -159,7 +159,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr) < 0) {
 			break;
 		}
-		const double epoch_sent_ms = mark_sent(ping);
+		const timeval_t epoch_sent = mark_sent(ping);
 
 		// ECHO応答の受信を待機する
 		uint8_t	recv_buffer[4096];
@@ -183,7 +183,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 			DEBUGOUT("msg.msg_namelen: %u", msg.msg_namelen);
 			debug_hexdump("recv_buffer", recv_buffer, recv_size);
 		}
-		const double triptime = mark_receipt(ping, epoch_sent_ms);
+		const double triptime = mark_receipt(ping, &epoch_sent);
 
 
 		// TODO: 受信サイズ >= IPヘッダのサイズ であることを確認する
