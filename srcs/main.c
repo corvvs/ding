@@ -125,6 +125,13 @@ int	recv_ping(
 	return rv;
 }
 
+sig_atomic_t volatile g_interrupted = 0;
+
+void	sig_int(int signal) {
+	(void)signal;
+	g_interrupted = 1;
+}
+
 // 1つの宛先に対して ping セッションを実行する
 int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
@@ -132,19 +139,24 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 	printf("PING %s (%s): %zu data bytes\n",
 		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
 
+	g_interrupted = 0;
+	signal(SIGINT, sig_int);
+
 	// [ICMPヘッダを準備する]
-	for (size_t	sequence = 0; ; sequence += 1) {
+	for (size_t	sequence = 0; g_interrupted == 0; sequence += 1) {
+
+
 		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
 		deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
 
 		// 送信!!
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr) < 0) {
-			return -1;
+			break;
 		}
 		const double epoch_sent_ms = mark_sent(ping);
 
 		// ECHO応答の受信を待機する
-		uint8_t*	recv_buffer = malloc(4096);
+		uint8_t	recv_buffer[4096];
 		struct msghdr		msg;
 		struct iovec		iov;
 		socket_address_in_t	sa;
@@ -159,7 +171,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 			iov.iov_len = 4096;
 			int rv = recv_ping(ping, &msg);
 			if (rv < 0) {
-				return -1;
+				break;
 			}
 			recv_size = rv;
 			DEBUGOUT("msg.msg_namelen: %u", msg.msg_namelen);
@@ -179,22 +191,10 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 		// TODO: 受信サイズ == トータルサイズ であることを確認する
 		if (recv_size != ip_hd->tot_len) {
 			DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, ip_hd->tot_len);
-			return -1;
+			break;
 		}
 		const size_t	ip_header_len = ip_hd->ihl * 4;
 		DEBUGOUT("ip_header_len: %zu", ip_header_len);
-		DEBUGOUT("ip_hd->saddr: %u.%u.%u.%u",
-			(ip_hd->saddr >> 24) & 0xff,
-			(ip_hd->saddr >> 16) & 0xff,
-			(ip_hd->saddr >> 8) & 0xff,
-			(ip_hd->saddr >> 0) & 0xff
-		);
-		DEBUGOUT("ip_hd->daddr: %u.%u.%u.%u",
-			(ip_hd->daddr >> 24) & 0xff,
-			(ip_hd->daddr >> 16) & 0xff,
-			(ip_hd->daddr >> 8) & 0xff,
-			(ip_hd->daddr >> 0) & 0xff
-		);
 		// CHECK: ip_header_len >= sizeof(ip_header_t)
 		const size_t	icmp_len = recv_size  - ip_header_len;
 		DEBUGOUT("icmp_len: %zu", icmp_len);
@@ -223,15 +223,10 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 			triptime
 		);
 
-		// 統計情報を表示する
-		print_stats_packet_loss(ping);
-		print_stats_roundtrip(ping);
-
-
-		free(recv_buffer);
 		sleep(1);
 	}
-
+	// 統計情報を表示する
+	print_stats(ping);
 
 
 	return 0;
@@ -280,6 +275,8 @@ int main(int argc, char **argv) {
 		run_ping_session(&ping, &addr);
 
 		// [宛先単位の後処理]
+		free(ping.stat_data.rtts);
+		ping.stat_data = (t_stat_data){};
 	}
 
 	// [全体の後処理]

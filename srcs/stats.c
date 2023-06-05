@@ -24,7 +24,7 @@ double	mark_receipt(t_ping* ping, double epoch_sent_ms) {
 	return rtt;
 }
 
-double	rtt_min(const t_ping* ping) {
+static double	rtt_min(const t_ping* ping) {
 	if (ping->stat_data.packets_receipt == 0) {
 		return 0;
 	}
@@ -37,7 +37,7 @@ double	rtt_min(const t_ping* ping) {
 	return min;
 }
 
-double	rtt_max(const t_ping* ping) {
+static double	rtt_max(const t_ping* ping) {
 	if (ping->stat_data.packets_receipt == 0) {
 		return 0;
 	}
@@ -50,7 +50,7 @@ double	rtt_max(const t_ping* ping) {
 	return max;
 }
 
-double	rtt_average(const t_ping* ping) {
+static double	rtt_average(const t_ping* ping) {
 	if (ping->stat_data.packets_receipt == 0) {
 		return 0;
 	}
@@ -61,7 +61,7 @@ double	rtt_average(const t_ping* ping) {
 	return sum / ping->stat_data.packets_receipt;
 }
 
-double	rtt_stddev(const t_ping* ping) {
+static double	rtt_stddev(const t_ping* ping) {
 	if (ping->stat_data.packets_receipt == 0) {
 		return 0;
 	}
@@ -73,7 +73,13 @@ double	rtt_stddev(const t_ping* ping) {
 	return ft_sqrt(sum / ping->stat_data.packets_receipt - average * average);
 }
 
-void	print_stats_packet_loss(const t_ping* ping) {
+// 統計データのリボン
+static void	print_stats_ribbon(const t_ping* ping) {
+	printf("--- %s ping statistics ---\n", ping->target.given_host);
+}
+
+// パケットロスに関する統計データを表示
+static void	print_stats_packet_loss(const t_ping* ping) {
 	printf("%zu packets transmitted, %zu packets received, %d%% packet loss\n",
 		ping->stat_data.packets_sent,
 		ping->stat_data.packets_receipt,
@@ -82,7 +88,7 @@ void	print_stats_packet_loss(const t_ping* ping) {
 }
 
 // ラウンドトリップに関する統計データを表示
-void	print_stats_roundtrip(const t_ping* ping) {
+static void	print_stats_roundtrip(const t_ping* ping) {
 	// 受信パケットがない場合は統計データを出さない
 	if (ping->stat_data.packets_receipt == 0) { return; }
 	double	min = rtt_min(ping);
@@ -90,4 +96,10 @@ void	print_stats_roundtrip(const t_ping* ping) {
 	double	avg = rtt_average(ping);
 	double	stddev = rtt_stddev(ping);
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n", min, avg, max, stddev);
+}
+
+void	print_stats(const t_ping* ping) {
+	print_stats_ribbon(ping);
+	print_stats_packet_loss(ping);
+	print_stats_roundtrip(ping);
 }

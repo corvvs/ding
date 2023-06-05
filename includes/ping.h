@@ -11,6 +11,7 @@
 #include <netinet/ip_icmp.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <signal.h>
 #include <errno.h>
 #include "libft.h"
 #include "common.h"
@@ -105,8 +106,7 @@ double		get_current_epoch_ms(void);
 // stats.c
 double	mark_sent(t_ping* ping);
 double	mark_receipt(t_ping* ping, double epoch_sent_ms);
-void	print_stats_packet_loss(const t_ping* ping);
-void	print_stats_roundtrip(const t_ping* ping);
+void	print_stats(const t_ping* ping);
 
 // math.c
 double	ft_square(double x);
