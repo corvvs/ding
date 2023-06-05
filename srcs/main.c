@@ -227,16 +227,28 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 int main(int argc, char **argv) {
 	(void)argc;
 	(void)argv;
+
+	// TODO: プログラム名を控える
+	argc -= 1;
+	argv += 1;
+
+	// TODO: オプションの解析
+
+	if (argc < 1) {
+		printf("ping: missing host operand\n");
+		return 64;
+	}
+
 	t_ping ping = {
 		.target = {
-			.given_host = "google.com ",
+			.given_host = *argv,
 		}
 	};
 
 	g_is_little_endian = is_little_endian();
 	DEBUGWARN("g_is_little_endian: %d", g_is_little_endian);
 
-	// [ソケット作成
+	// [ソケット作成]
 	// ソケットは全宛先で使い回すので最初に生成する
 	ping.socket_fd = create_icmp_socket();
 
