@@ -104,8 +104,8 @@ timeval_t	get_current_time(void);
 double		get_current_epoch_ms(void);
 
 // stats.c
-double	mark_sent(t_ping* ping);
-double	mark_receipt(t_ping* ping, double epoch_sent_ms);
+timeval_t	mark_sent(t_ping* ping);
+double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent);
 void	print_stats(const t_ping* ping);
 
 // math.c
