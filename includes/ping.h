@@ -45,21 +45,35 @@ typedef struct timeval timeval_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
+// 統計情報の元データを管理する構造体
+typedef struct s_stat_data {
+	// 送信済みパケット数
+	size_t	packets_sent;
+	// 受信済みパケット数
+	size_t	packets_receipt;
+	// ラウンドトリップ数
+	double*	rtts;
+	// ラウンドトリップ数のキャパシティ
+	size_t	rtts_cap;
+}	t_stat_data;
+
+// オプション構造体
 typedef struct s_options
 {
 
 } t_options;
 
+// マスター構造体
 typedef struct s_ping
 {
 	const char*	target;
 	int			socket_fd;
-
+	t_stat_data	stat_data;
 	t_options options;
 } t_ping;
 
 // ip.c
-void	ip_convert_endiandd(void* mem);
+void	ip_convert_endian(void* mem);
 
 // icmp.c
 void	icmp_convert_endian(void* mem);
@@ -73,6 +87,16 @@ uint64_t	swap_8byte(uint64_t value);
 // time.c
 timeval_t	get_current_time(void);
 double		get_current_epoch_ms(void);
+
+// stats.c
+double	mark_sent(t_ping* ping);
+double	mark_receipt(t_ping* ping, double epoch_sent_ms);
+void	print_stats_packet_loss(const t_ping* ping);
+void	print_stats_roundtrip(const t_ping* ping);
+
+// math.c
+double	ft_square(double x);
+double	ft_sqrt(double x);
 
 // debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);

@@ -2,7 +2,7 @@
 extern int	g_is_little_endian;
 
 // mem をIPヘッダとして, 必要ならエンディアン変換を行う
-void	ip_convert_endiandd(void* mem) {
+void	ip_convert_endian(void* mem) {
 	if (!g_is_little_endian) { return; }
 
 	ip_header_t*	ip_hd = (ip_header_t*)mem;
