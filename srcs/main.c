@@ -126,7 +126,7 @@ int	recv_ping(
 }
 
 // 1つの宛先に対して ping セッションを実行する
-int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
+int	run_ping_session(t_ping* ping, const struct sockaddr_in* addr) {
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
 	// 送信前出力
 	printf("PING %s (%s): %zu data bytes\n",
@@ -137,11 +137,11 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
 		deploy_datagram(datagram_buffer, sizeof(datagram_buffer));
 
-		const double epoch_sent_ms = get_current_epoch_ms();
 		// 送信!!
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr) < 0) {
 			return -1;
 		}
+		const double epoch_sent_ms = mark_sent(ping);
 
 		// ECHO応答の受信を待機する
 		uint8_t*	recv_buffer = malloc(4096);
@@ -164,18 +164,14 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 			recv_size = rv;
 			debug_hexdump("recv_buffer", recv_buffer, recv_size);
 		}
-		const double epoch_receipt_ms = get_current_epoch_ms();
+		const double triptime = mark_receipt(ping, epoch_sent_ms);
 
-		printf("Received ICMP packet from %s\n", inet_ntoa(sa.sin_addr));
-
-		// debug_hexdump("msg_control", msg.msg_control, rv);
-
-		// print_msg_flags(&msg);
 
 		// TODO: 受信サイズ >= IPヘッダのサイズ であることを確認する
 
-		ip_convert_endiandd(recv_buffer);
+		ip_convert_endian(recv_buffer);
 
+		// print_msg_flags(&msg);
 		// debug_ip_header(recv_buffer);
 
 		const ip_header_t*	ip_hd = (ip_header_t*)recv_buffer;
@@ -206,13 +202,6 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 
 
 		// 受信時出力
-		// printf ("%d bytes from %s: icmp_seq=%u", datalen,
-		// 	inet_ntoa (*(struct in_addr *) &from->sin_addr.s_addr),
-		// 	ntohs (icmp->icmp_seq));
-		// printf (" ttl=%d", ip->ip_ttl);
-		// if (timing)
-		// 	printf (" time=%.3f ms", triptime);
-		const double	triptime = epoch_receipt_ms - epoch_sent_ms;
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 			icmp_len,
 			inet_ntoa(sa.sin_addr),
@@ -220,6 +209,10 @@ int	run_ping_session(const t_ping* ping, const struct sockaddr_in* addr) {
 			ip_hd->ttl,
 			triptime
 		);
+
+		// 統計情報を表示する
+		print_stats_packet_loss(ping);
+		print_stats_roundtrip(ping);
 
 
 		free(recv_buffer);
