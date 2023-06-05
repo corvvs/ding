@@ -6,7 +6,7 @@ int	g_is_little_endian;
 socket_address_in_t	retrieve_addr(const t_ping* ping) {
 	socket_address_in_t addr = {};
 	addr.sin_family = AF_INET;
-	inet_pton(AF_INET, ping->target.given_host, &addr.sin_addr);
+	inet_pton(AF_INET, ping->target.resolved_host, &addr.sin_addr);
 	return addr;
 }
 
