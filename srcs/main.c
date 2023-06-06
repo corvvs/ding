@@ -135,8 +135,6 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr_to) < 0) {
 			break;
 		}
-		const timeval_t epoch_sent = mark_sent(ping);
-
 		// ECHO応答の受信を待機する
 		uint8_t	recv_buffer[4096];
 		struct msghdr		msg;
@@ -196,7 +194,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 		icmp_convert_endian(receipt_icmp_header);
 		// debug_icmp_header(receipt_icmp_header);
 
-		const double triptime = mark_receipt(ping, &epoch_sent, &epoch_receipt);
+		const double triptime = mark_receipt(ping, receipt_icmp, &epoch_receipt);
 		// 受信時出力
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 			icmp_len,
