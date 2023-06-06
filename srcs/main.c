@@ -20,29 +20,6 @@ int create_icmp_socket(void) {
 	return sock;
 }
 
-// ICMP チェックサムを計算する
-uint16_t	derive_icmp_checksum(const void* datagram, size_t len) {
-	// TODO: エンディアンの考慮
-	uint32_t	sum = 0;
-	uint16_t*	ptr = (uint16_t*)datagram;
-	while (len > 0) {
-		if (len >= sizeof(uint16_t)) {
-			sum += *ptr;
-			// DEBUGOUT("sum: %u %u", sum, *ptr);
-			len -= sizeof(uint16_t);
-			ptr += 1;
-		} else {
-			sum += *((uint8_t*)ptr) << 8;
-			break;
-		}
-	}
-	// 1の補数和にする
-	sum = (sum >> 16) + (sum & 0xffff);
-	sum = (sum >> 16) + sum;
-	// 最後にもう1度1の補数を取る
-	return (~sum) & 0xffff;
-}
-
 size_t	set_timestamp_for_data(uint8_t* data_buffer, size_t buffer_len) {
 	if (buffer_len < sizeof(timeval_t)) { return 0; }
 	timeval_t	tm;
@@ -139,7 +116,7 @@ void	sig_int(int signal) {
 }
 
 // 1つの宛先に対して ping セッションを実行する
-int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
+int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
 	// 送信前出力
 	printf("PING %s (%s): %zu data bytes\n",
@@ -151,12 +128,11 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 	// [ICMPヘッダを準備する]
 	for (uint16_t	sequence = 0; g_interrupted == 0; sequence += 1) {
 
-
 		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
 		deploy_datagram(datagram_buffer, sizeof(datagram_buffer), sequence);
 
 		// 送信!!
-		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr) < 0) {
+		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr_to) < 0) {
 			break;
 		}
 		const timeval_t epoch_sent = mark_sent(ping);
@@ -165,67 +141,68 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 		uint8_t	recv_buffer[4096];
 		struct msghdr		msg;
 		struct iovec		iov;
-		socket_address_in_t	sa;
+		// socket_address_in_t	sa;
 		size_t				recv_size = 0;
-		{
-			ft_memset(&msg, 0, sizeof(msg));
-			msg.msg_name = &sa;
-			msg.msg_namelen = sizeof(sa);
-			msg.msg_iov = &iov;
-			msg.msg_iovlen = 1;
-			iov.iov_base = recv_buffer;
-			iov.iov_len = 4096;
-			int rv = recv_ping(ping, &msg);
-			if (rv < 0) {
-				break;
-			}
-			recv_size = rv;
-			DEBUGOUT("msg.msg_namelen: %u", msg.msg_namelen);
-			debug_hexdump("recv_buffer", recv_buffer, recv_size);
+		ft_memset(&msg, 0, sizeof(msg));
+		msg.msg_name = NULL;
+		msg.msg_namelen = 0;
+		msg.msg_iov = &iov;
+		msg.msg_iovlen = 1;
+		iov.iov_base = recv_buffer;
+		iov.iov_len = 4096;
+		int rv = recv_ping(ping, &msg);
+		if (rv < 0) {
+			break;
 		}
-		const double triptime = mark_receipt(ping, &epoch_sent);
-
-
-		// TODO: 受信サイズ >= IPヘッダのサイズ であることを確認する
+		const timeval_t epoch_receipt = mark_sent(ping);
+		recv_size = rv;
+		debug_hexdump("recv_buffer", recv_buffer, recv_size);
+		// まず 受信サイズ >= IPヘッダ(拡張なし)のサイズ であることを確認する
+		if (recv_size < sizeof(ip_header_t)) {
+			DEBUGERR("recv_size < sizeof(ip_header_t): %zu < %zu", recv_size, sizeof(ip_header_t));
+			break;
+		}
 
 		ip_convert_endian(recv_buffer);
 
 		// print_msg_flags(&msg);
 		debug_ip_header(recv_buffer);
 
-		const ip_header_t*	ip_hd = (ip_header_t*)recv_buffer;
+		const ip_header_t*	receipt_ip_header = (ip_header_t*)recv_buffer;
 		// TODO: 受信サイズ == トータルサイズ であることを確認する
-		if (recv_size != ip_hd->tot_len) {
-			DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, ip_hd->tot_len);
+		if (recv_size != receipt_ip_header->tot_len) {
+			DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, receipt_ip_header->tot_len);
 			break;
 		}
-		const size_t	ip_header_len = ip_hd->ihl * 4;
+		const size_t	ip_header_len = receipt_ip_header->ihl * 4;
 		DEBUGOUT("ip_header_len: %zu", ip_header_len);
 		// CHECK: ip_header_len >= sizeof(ip_header_t)
+		if (recv_size < ip_header_len) {
+			DEBUGERR("recv_size < ip_header_len: %zu < %zu", recv_size, ip_header_len);
+			break;
+		}
 		const size_t	icmp_len = recv_size  - ip_header_len;
 		DEBUGOUT("icmp_len: %zu", icmp_len);
-		icmp_header_t*	icmp_header = (icmp_header_t*)(recv_buffer + ip_header_len);
-		icmp_convert_endian(icmp_header);
+		if (icmp_len < sizeof(icmp_header_t)) {
+			DEBUGERR("icmp_len < sizeof(icmp_header_t): %zu < %zu", icmp_len, sizeof(icmp_header_t));
+			break;
+		}
+		void*			receipt_icmp = recv_buffer + ip_header_len;
+		icmp_header_t*	receipt_icmp_header = (icmp_header_t*)receipt_icmp;
 
-		// debug_icmp_header(icmp_header);
+		if (validate_receipt_data(addr_to, receipt_ip_header, receipt_icmp, icmp_len)) {
+			break;
+		}
+		icmp_convert_endian(receipt_icmp_header);
+		// debug_icmp_header(receipt_icmp_header);
 
-		// TODO:
-		// 受信したものが「先立って自分が送ったICMP Echo Request」に対応する ICMP Echo Reply であることを確認する.
-		// 具体的には:
-		// - IP
-		//   - Reply の送信元が, Request の送信先であること
-		// - ICMP
-		//   - Type = 0 であること
-		//   - Reply のID, Sequenceが, Request のID, Sequence と一致すること
-		//   - チェックサムがgoodであること
-
-
+		const double triptime = mark_receipt(ping, &epoch_sent, &epoch_receipt);
 		// 受信時出力
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 			icmp_len,
 			ping->target.resolved_host,
-			icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-			ip_hd->ttl,
+			receipt_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+			receipt_ip_header->ttl,
 			triptime
 		);
 
@@ -239,7 +216,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr) {
 }
 
 int main(int argc, char **argv) {
-	if (argc < 0) {
+	if (argc < 1) {
 		return 1;
 	}
 
@@ -251,7 +228,7 @@ int main(int argc, char **argv) {
 
 	if (argc < 1) {
 		printf("ping: missing host operand\n");
-		return 64;
+		return 64; // なぜ 64 なのか...
 	}
 
 	t_ping ping = {
@@ -273,7 +250,6 @@ int main(int argc, char **argv) {
 		}
 		DEBUGWARN("given:    %s", ping.target.given_host);
 		DEBUGWARN("resolved: %s", ping.target.resolved_host);
-
 
 		// [アドレス変換]
 		socket_address_in_t	addr = retrieve_addr(&ping);
