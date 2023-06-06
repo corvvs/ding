@@ -13,14 +13,13 @@ timeval_t	mark_sent(t_ping* ping) {
 	return get_current_time();
 }
 
-double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent) {
+double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent, const timeval_t* epoch_receipt) {
 	if (ping->stat_data.packets_receipt >= ping->stat_data.rtts_cap) {
 		extend_buffer(&ping->stat_data);
 	}
-	timeval_t epoch_receipt = get_current_time();
 	double rtt =
-		(epoch_receipt.tv_sec - epoch_sent->tv_sec) * 1000.0 +
-		(epoch_receipt.tv_usec - epoch_sent->tv_usec) / 1000.0;
+		(epoch_receipt->tv_sec - epoch_sent->tv_sec) * 1000.0 +
+		(epoch_receipt->tv_usec - epoch_sent->tv_usec) / 1000.0;
 	ping->stat_data.rtts[ping->stat_data.packets_receipt] = rtt;
 	ping->stat_data.packets_receipt += 1;
 	return rtt;

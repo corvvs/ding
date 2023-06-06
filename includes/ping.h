@@ -91,7 +91,8 @@ int	resolve_host(t_target* target);
 void	ip_convert_endian(void* mem);
 
 // icmp.c
-void	icmp_convert_endian(void* mem);
+void		icmp_convert_endian(void* mem);
+uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
 
 // endian.c
 bool		is_little_endian(void);
@@ -99,13 +100,22 @@ uint16_t	swap_2byte(uint16_t value);
 uint32_t	swap_4byte(uint32_t value);
 uint64_t	swap_8byte(uint64_t value);
 
+// validator.c
+int			validate_receipt_data(
+	const socket_address_in_t* addr_to,
+	const ip_header_t* receipt_ip_hd,
+	void* receipt_icmp_hd,
+	size_t icmp_len
+);
+
+
 // time.c
 timeval_t	get_current_time(void);
 double		get_current_epoch_ms(void);
 
 // stats.c
 timeval_t	mark_sent(t_ping* ping);
-double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent);
+double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent, const timeval_t* epoch_receipt);
 void	print_stats(const t_ping* ping);
 
 // math.c

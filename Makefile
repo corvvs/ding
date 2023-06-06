@@ -7,6 +7,7 @@ FILES	:=	\
 			ip.c\
 			icmp.c\
 			endian.c\
+			validator.c\
 			time.c\
 			stats.c\
 			math.c\
