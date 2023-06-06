@@ -13,7 +13,13 @@ timeval_t	mark_sent(t_ping* ping) {
 	return get_current_time();
 }
 
-double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent, const timeval_t* epoch_receipt) {
+// ASSERTION: receipt_icmp のサイズが sizeof(timeval_t) 以上
+double	mark_receipt(t_ping* ping, const void* receipt_icmp, const timeval_t* epoch_receipt) {
+	// アライメント違反を防ぐために, 一旦別バッファにコピーする.
+	uint8_t buffer_sent[sizeof(timeval_t)];
+	ft_memcpy(buffer_sent, receipt_icmp + sizeof(icmp_header_t), sizeof(timeval_t));
+
+	const timeval_t*	epoch_sent = (const timeval_t*)buffer_sent;
 	if (ping->stat_data.packets_receipt >= ping->stat_data.rtts_cap) {
 		extend_buffer(&ping->stat_data);
 	}

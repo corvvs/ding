@@ -81,7 +81,7 @@ typedef struct s_ping
 
 	int			socket_fd;
 	t_stat_data	stat_data;
-	t_options options;
+	t_options	options;
 } t_ping;
 
 // host.c
@@ -115,7 +115,7 @@ double		get_current_epoch_ms(void);
 
 // stats.c
 timeval_t	mark_sent(t_ping* ping);
-double	mark_receipt(t_ping* ping, const timeval_t* epoch_sent, const timeval_t* epoch_receipt);
+double	mark_receipt(t_ping* ping, const void* receipt_icmp, const timeval_t* epoch_receipt);
 void	print_stats(const t_ping* ping);
 
 // math.c

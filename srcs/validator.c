@@ -52,6 +52,10 @@ int	validate_receipt_data(
 		DEBUGERR("%s", "checksum is bad");
 		return -1;
 	}
+	if (icmp_len < sizeof(timeval_t)) {
+		DEBUGERR("icmp_len < sizeof(timeval_t): %zu < %zu", icmp_len, sizeof(timeval_t));
+		return -1;
+	}
 
 	return 0;
 }
