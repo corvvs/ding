@@ -17,6 +17,16 @@ int create_icmp_socket(void) {
 		perror("socket");
 		exit(EXIT_FAILURE);
 	}
+
+	// 受信タイムアウト設定
+	timeval_t	recv_timeout = {
+		.tv_sec = 0,
+		.tv_usec = 100000,
+	};
+	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout)) < 0) {
+		perror("setsockopt failed");
+		exit(EXIT_FAILURE);
+	}
 	return sock;
 }
 
@@ -38,7 +48,12 @@ void	print_msg_flags(const struct msghdr* msg) {
 	DEBUGINFO("MSG_ERRQUEUE: %d", !!(msg->msg_flags & MSG_ERRQUEUE)); // ソケットのエラーキューからエラーを受信した
 }
 
-void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len, uint16_t sequence) {
+void	deploy_datagram(
+	const t_ping* ping,
+	uint8_t* datagram_buffer,
+	size_t datagram_len,
+	uint16_t sequence
+) {
 	// ASSERT(datagram_len >= sizeof(icmp_header_t));
 	icmp_header_t*	icmp_hd = (icmp_header_t*)datagram_buffer;
 	uint8_t*		icmp_dt = (void*)datagram_buffer + sizeof(icmp_header_t);
@@ -46,7 +61,7 @@ void	deploy_datagram(uint8_t* datagram_buffer, size_t datagram_len, uint16_t seq
 
 	icmp_hd->ICMP_HEADER_TYPE = ICMP_ECHO_REQUEST;
 	icmp_hd->ICMP_HEADER_CODE = 0;
-	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = getpid();
+	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = ping->icmp_header_id;
 	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = sequence;
 
 	// エンディアン変換
@@ -103,9 +118,24 @@ int	recv_ping(
 		0
 	);
 	if (rv < 0) {
+		DEBUGOUT("EAGAIN: %d", EAGAIN);
 		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
 	}
 	return rv;
+}
+
+int	receive_reply(const t_ping* ping, uint8_t* recv_buffer, size_t buffer_len) {
+	struct msghdr		msg_receipt;
+	struct iovec		iov_receipt;
+	// socket_address_in_t	sa;
+	ft_memset(&msg_receipt, 0, sizeof(msg_receipt));
+	msg_receipt.msg_name = NULL;
+	msg_receipt.msg_namelen = 0;
+	msg_receipt.msg_iov = &iov_receipt;
+	msg_receipt.msg_iovlen = 1;
+	iov_receipt.iov_base = recv_buffer;
+	iov_receipt.iov_len = buffer_len;
+	return recv_ping(ping, &msg_receipt);
 }
 
 sig_atomic_t volatile g_interrupted = 0;
@@ -129,75 +159,46 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 	for (uint16_t	sequence = 0; g_interrupted == 0; sequence += 1) {
 
 		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
-		deploy_datagram(datagram_buffer, sizeof(datagram_buffer), sequence);
+		deploy_datagram(ping, datagram_buffer, sizeof(datagram_buffer), sequence);
 
 		// 送信!!
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr_to) < 0) {
 			break;
 		}
+		mark_sent(ping);
 		// ECHO応答の受信を待機する
 		uint8_t	recv_buffer[4096];
-		struct msghdr		msg;
-		struct iovec		iov;
-		// socket_address_in_t	sa;
-		size_t				recv_size = 0;
-		ft_memset(&msg, 0, sizeof(msg));
-		msg.msg_name = NULL;
-		msg.msg_namelen = 0;
-		msg.msg_iov = &iov;
-		msg.msg_iovlen = 1;
-		iov.iov_base = recv_buffer;
-		iov.iov_len = 4096;
-		int rv = recv_ping(ping, &msg);
+		int		rv = receive_reply(ping, recv_buffer, 4096);
 		if (rv < 0) {
 			break;
 		}
-		const timeval_t epoch_receipt = mark_sent(ping);
-		recv_size = rv;
+		const timeval_t epoch_receipt = get_current_time();
+		const size_t	recv_size = rv;
 		debug_hexdump("recv_buffer", recv_buffer, recv_size);
-		// まず 受信サイズ >= IPヘッダ(拡張なし)のサイズ であることを確認する
-		if (recv_size < sizeof(ip_header_t)) {
-			DEBUGERR("recv_size < sizeof(ip_header_t): %zu < %zu", recv_size, sizeof(ip_header_t));
+		t_validation_result	result = validate_receipt_raw_data(recv_size);
+		if (result != VR_ACCEPTED) {
 			break;
 		}
-
 		ip_convert_endian(recv_buffer);
-
-		// print_msg_flags(&msg);
 		debug_ip_header(recv_buffer);
-
+		if (validate_receipt_ip(recv_size, (ip_header_t*)recv_buffer, addr_to) != VR_ACCEPTED) {
+			break;
+		}
 		const ip_header_t*	receipt_ip_header = (ip_header_t*)recv_buffer;
-		// TODO: 受信サイズ == トータルサイズ であることを確認する
-		if (recv_size != receipt_ip_header->tot_len) {
-			DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, receipt_ip_header->tot_len);
+		const size_t		ip_header_len = receipt_ip_header->ihl * 4;
+		const size_t		icmp_whole_len = recv_size  - ip_header_len;
+		void*				receipt_icmp = recv_buffer + ip_header_len;
+		if (validate_receipt_icmp(ping, receipt_icmp, icmp_whole_len) != VR_ACCEPTED) {
 			break;
 		}
-		const size_t	ip_header_len = receipt_ip_header->ihl * 4;
-		DEBUGOUT("ip_header_len: %zu", ip_header_len);
-		// CHECK: ip_header_len >= sizeof(ip_header_t)
-		if (recv_size < ip_header_len) {
-			DEBUGERR("recv_size < ip_header_len: %zu < %zu", recv_size, ip_header_len);
-			break;
-		}
-		const size_t	icmp_len = recv_size  - ip_header_len;
-		DEBUGOUT("icmp_len: %zu", icmp_len);
-		if (icmp_len < sizeof(icmp_header_t)) {
-			DEBUGERR("icmp_len < sizeof(icmp_header_t): %zu < %zu", icmp_len, sizeof(icmp_header_t));
-			break;
-		}
-		void*			receipt_icmp = recv_buffer + ip_header_len;
 		icmp_header_t*	receipt_icmp_header = (icmp_header_t*)receipt_icmp;
-
-		if (validate_receipt_data(addr_to, receipt_ip_header, receipt_icmp, icmp_len)) {
-			break;
-		}
 		icmp_convert_endian(receipt_icmp_header);
 		// debug_icmp_header(receipt_icmp_header);
 
 		const double triptime = mark_receipt(ping, receipt_icmp, &epoch_receipt);
 		// 受信時出力
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
-			icmp_len,
+			icmp_whole_len,
 			ping->target.resolved_host,
 			receipt_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
 			receipt_ip_header->ttl,
@@ -232,7 +233,8 @@ int main(int argc, char **argv) {
 	t_ping ping = {
 		.target = {
 			.given_host = *argv,
-		}
+		},
+		.icmp_header_id = getpid(),
 	};
 
 	g_is_little_endian = is_little_endian();

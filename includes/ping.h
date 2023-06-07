@@ -49,6 +49,11 @@ typedef struct sockaddr_in	socket_address_in_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
+typedef enum e_validation_result {
+	VR_ACCEPTED,
+	VR_IGNORED,
+}	t_validation_result;
+
 // 統計情報の元データを管理する構造体
 typedef struct s_stat_data {
 	// 送信済みパケット数
@@ -79,6 +84,7 @@ typedef struct s_ping
 {
 	t_target	target;
 
+	uint16_t	icmp_header_id;
 	int			socket_fd;
 	t_stat_data	stat_data;
 	t_options	options;
@@ -101,11 +107,16 @@ uint32_t	swap_4byte(uint32_t value);
 uint64_t	swap_8byte(uint64_t value);
 
 // validator.c
-int			validate_receipt_data(
-	const socket_address_in_t* addr_to,
-	const ip_header_t* receipt_ip_hd,
+t_validation_result	validate_receipt_raw_data(size_t recv_size);
+t_validation_result	validate_receipt_ip(
+	size_t recv_size,
+	const ip_header_t* receipt_ip_header,
+	const socket_address_in_t* addr_to
+);
+t_validation_result	validate_receipt_icmp(
+	const t_ping* ping,
 	void* receipt_icmp_hd,
-	size_t icmp_len
+	size_t icmp_whole_len
 );
 
 
