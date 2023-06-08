@@ -8,15 +8,11 @@ static void	extend_buffer(t_stat_data* stat_data) {
 	stat_data->rtts = extended;
 }
 
-timeval_t	mark_sent(t_ping* ping) {
-	ping->stat_data.packets_sent += 1;
-	return get_current_time();
-}
-
 // ASSERTION: receipt_icmp のサイズが sizeof(timeval_t) 以上
-double	mark_receipt(t_ping* ping, const void* receipt_icmp, const timeval_t* epoch_receipt) {
+double	mark_receipt(t_ping* ping, const t_acceptance* acceptance) {
 	// アライメント違反を防ぐために, 一旦別バッファにコピーする.
-	uint8_t buffer_sent[sizeof(timeval_t)];
+	uint8_t			buffer_sent[sizeof(timeval_t)];
+	const uint8_t*	receipt_icmp = acceptance->recv_buffer + sizeof(ip_header_t);
 	ft_memcpy(buffer_sent, receipt_icmp + sizeof(icmp_header_t), sizeof(timeval_t));
 
 	const timeval_t*	epoch_sent = (const timeval_t*)buffer_sent;
@@ -24,8 +20,8 @@ double	mark_receipt(t_ping* ping, const void* receipt_icmp, const timeval_t* epo
 		extend_buffer(&ping->stat_data);
 	}
 	double rtt =
-		(epoch_receipt->tv_sec - epoch_sent->tv_sec) * 1000.0 +
-		(epoch_receipt->tv_usec - epoch_sent->tv_usec) / 1000.0;
+		(acceptance->epoch_receipt.tv_sec - epoch_sent->tv_sec) * 1000.0 +
+		(acceptance->epoch_receipt.tv_usec - epoch_sent->tv_usec) / 1000.0;
 	ping->stat_data.rtts[ping->stat_data.packets_receipt] = rtt;
 	ping->stat_data.packets_receipt += 1;
 	return rtt;

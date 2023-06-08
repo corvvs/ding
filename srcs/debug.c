@@ -13,6 +13,16 @@ void	debug_hexdump(const char* label, const void* mem, size_t len) {
 	dprintf(STDERR_FILENO, "\n");
 }
 
+void	debug_msg_flags(const struct msghdr* msg) {
+	// msg_flags の表示
+	DEBUGINFO("msg_flags: %x",    msg->msg_flags);
+	DEBUGINFO("MSG_EOR: %d",      !!(msg->msg_flags & MSG_EOR)); // レコードの終り
+	DEBUGINFO("MSG_TRUNC: %d",    !!(msg->msg_flags & MSG_TRUNC)); // データグラムを受信しきれなかった
+	DEBUGINFO("MSG_CTRUNC: %d",   !!(msg->msg_flags & MSG_CTRUNC)); // 補助データが受信しきれなかった
+	DEBUGINFO("MSG_OOB: %d",      !!(msg->msg_flags & MSG_OOB)); // 対域外データを受信した
+	DEBUGINFO("MSG_ERRQUEUE: %d", !!(msg->msg_flags & MSG_ERRQUEUE)); // ソケットのエラーキューからエラーを受信した
+}
+
 void	debug_ip_header(const void* mem) {
 	const ip_header_t*	ip_hd = (const ip_header_t*) mem;
 	dprintf(STDERR_FILENO, "ip_header_t:\n");

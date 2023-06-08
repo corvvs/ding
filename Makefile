@@ -4,6 +4,9 @@ INCDIR	:=	includes
 FILES	:=	\
 			main.c\
 			host.c\
+			socket.c\
+			sender.c\
+			receiver.c\
 			ip.c\
 			icmp.c\
 			endian.c\

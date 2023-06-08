@@ -10,134 +10,6 @@ socket_address_in_t	retrieve_addr(const t_ping* ping) {
 	return addr;
 }
 
-// ICMP送信用ソケットを作成する
-int create_icmp_socket(void) {
-	int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (sock < 0) {
-		perror("socket");
-		exit(EXIT_FAILURE);
-	}
-
-	// 受信タイムアウト設定
-	timeval_t	recv_timeout = {
-		.tv_sec = 0,
-		.tv_usec = 100000,
-	};
-	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout)) < 0) {
-		perror("setsockopt failed");
-		exit(EXIT_FAILURE);
-	}
-	return sock;
-}
-
-size_t	set_timestamp_for_data(uint8_t* data_buffer, size_t buffer_len) {
-	if (buffer_len < sizeof(timeval_t)) { return 0; }
-	timeval_t	tm;
-	gettimeofday(&tm, NULL);
-	ft_memcpy(data_buffer, &tm, sizeof(timeval_t));
-	return sizeof(timeval_t);
-}
-
-void	print_msg_flags(const struct msghdr* msg) {
-	// msg_flags の表示
-	DEBUGINFO("msg_flags: %x",    msg->msg_flags);
-	DEBUGINFO("MSG_EOR: %d",      !!(msg->msg_flags & MSG_EOR)); // レコードの終り
-	DEBUGINFO("MSG_TRUNC: %d",    !!(msg->msg_flags & MSG_TRUNC)); // データグラムを受信しきれなかった
-	DEBUGINFO("MSG_CTRUNC: %d",   !!(msg->msg_flags & MSG_CTRUNC)); // 補助データが受信しきれなかった
-	DEBUGINFO("MSG_OOB: %d",      !!(msg->msg_flags & MSG_OOB)); // 対域外データを受信した
-	DEBUGINFO("MSG_ERRQUEUE: %d", !!(msg->msg_flags & MSG_ERRQUEUE)); // ソケットのエラーキューからエラーを受信した
-}
-
-void	deploy_datagram(
-	const t_ping* ping,
-	uint8_t* datagram_buffer,
-	size_t datagram_len,
-	uint16_t sequence
-) {
-	// ASSERT(datagram_len >= sizeof(icmp_header_t));
-	icmp_header_t*	icmp_hd = (icmp_header_t*)datagram_buffer;
-	uint8_t*		icmp_dt = (void*)datagram_buffer + sizeof(icmp_header_t);
-	const size_t	icmp_dt_size = datagram_len - sizeof(icmp_header_t);
-
-	icmp_hd->ICMP_HEADER_TYPE = ICMP_ECHO_REQUEST;
-	icmp_hd->ICMP_HEADER_CODE = 0;
-	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = ping->icmp_header_id;
-	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = sequence;
-
-	// エンディアン変換
-	icmp_hd->ICMP_HEADER_TYPE = SWAP_NEEDED(icmp_hd->ICMP_HEADER_TYPE);
-	icmp_hd->ICMP_HEADER_CODE = SWAP_NEEDED(icmp_hd->ICMP_HEADER_CODE);
-	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID);
-	icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ);
-
-	size_t	data_offset = 0;
-
-	// 可能なら先頭部分を現在時刻で埋める
-	data_offset += set_timestamp_for_data(icmp_dt, icmp_dt_size);
-
-	// データフィールドをASCIIで埋める
-	// TODO: 全体で共通化
-	// TODO: パターンが与えられた場合はパターンを使う
-	for (size_t i = data_offset, j = 0; i < ICMP_ECHO_DATA_SIZE; i++, j++) {
-		icmp_dt[i] = j;
-	}
-
-	// 最後にチェックサム計算
-	icmp_hd->ICMP_HEADER_CHECKSUM = derive_icmp_checksum(datagram_buffer, ICMP_ECHO_DATAGRAM_SIZE);
-	DEBUGOUT("checksum: %d", icmp_hd->ICMP_HEADER_CHECKSUM);
-}
-
-// ICMP Echo Request を送信
-int	send_ping(
-	const t_ping* ping,
-	const uint8_t* datagram_buffer,
-	size_t datagram_len,
-	const socket_address_in_t* addr
-) {
-	int rv = sendto(
-		ping->socket_fd,
-		datagram_buffer, datagram_len,
-		0,
-		(struct sockaddr *)addr, sizeof(socket_address_in_t)
-	);
-	DEBUGOUT("sendto rv: %d", rv);
-	if (rv < 0) {
-		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
-	}
-	return rv;
-}
-
-int	recv_ping(
-	const t_ping* ping,
-	struct msghdr* msg
-) {
-
-	int rv = recvmsg(
-		ping->socket_fd,
-		msg,
-		0
-	);
-	if (rv < 0) {
-		DEBUGOUT("EAGAIN: %d", EAGAIN);
-		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
-	}
-	return rv;
-}
-
-int	receive_reply(const t_ping* ping, uint8_t* recv_buffer, size_t buffer_len) {
-	struct msghdr		msg_receipt;
-	struct iovec		iov_receipt;
-	// socket_address_in_t	sa;
-	ft_memset(&msg_receipt, 0, sizeof(msg_receipt));
-	msg_receipt.msg_name = NULL;
-	msg_receipt.msg_namelen = 0;
-	msg_receipt.msg_iov = &iov_receipt;
-	msg_receipt.msg_iovlen = 1;
-	iov_receipt.iov_base = recv_buffer;
-	iov_receipt.iov_len = buffer_len;
-	return recv_ping(ping, &msg_receipt);
-}
-
 sig_atomic_t volatile g_interrupted = 0;
 
 void	sig_int(int signal) {
@@ -165,43 +37,23 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr_to) < 0) {
 			break;
 		}
-		mark_sent(ping);
 		// ECHO応答の受信を待機する
-		uint8_t	recv_buffer[4096];
-		int		rv = receive_reply(ping, recv_buffer, 4096);
-		if (rv < 0) {
+		t_acceptance	acceptance = {
+			.recv_buffer_len = RECV_BUFFER_LEN,
+		};
+		if (receive_reply(ping, &acceptance) <= 0) {
 			break;
 		}
-		const timeval_t epoch_receipt = get_current_time();
-		const size_t	recv_size = rv;
-		debug_hexdump("recv_buffer", recv_buffer, recv_size);
-		t_validation_result	result = validate_receipt_raw_data(recv_size);
-		if (result != VR_ACCEPTED) {
+		if (check_acceptance(ping, &acceptance, addr_to)) {
 			break;
 		}
-		ip_convert_endian(recv_buffer);
-		debug_ip_header(recv_buffer);
-		if (validate_receipt_ip(recv_size, (ip_header_t*)recv_buffer, addr_to) != VR_ACCEPTED) {
-			break;
-		}
-		const ip_header_t*	receipt_ip_header = (ip_header_t*)recv_buffer;
-		const size_t		ip_header_len = receipt_ip_header->ihl * 4;
-		const size_t		icmp_whole_len = recv_size  - ip_header_len;
-		void*				receipt_icmp = recv_buffer + ip_header_len;
-		if (validate_receipt_icmp(ping, receipt_icmp, icmp_whole_len) != VR_ACCEPTED) {
-			break;
-		}
-		icmp_header_t*	receipt_icmp_header = (icmp_header_t*)receipt_icmp;
-		icmp_convert_endian(receipt_icmp_header);
-		// debug_icmp_header(receipt_icmp_header);
-
-		const double triptime = mark_receipt(ping, receipt_icmp, &epoch_receipt);
+		const double triptime = mark_receipt(ping, &acceptance);
 		// 受信時出力
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
-			icmp_whole_len,
+			acceptance.icmp_whole_len,
 			ping->target.resolved_host,
-			receipt_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-			receipt_ip_header->ttl,
+			acceptance.icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+			acceptance.ip_header->ttl,
 			triptime
 		);
 

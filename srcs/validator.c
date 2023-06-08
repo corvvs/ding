@@ -11,7 +11,7 @@ extern int	g_is_little_endian;
 // - (VR_REJECTED: エラー表示あり, 受信カウントを増やさない -> バリデーション時にエラーを出した後, VR_IGNORED に変更する)
 
 // 生の受信データについてのバリデーション
-t_validation_result	validate_receipt_raw_data(size_t recv_size) {
+static t_validation_result	validate_receipt_raw_data(size_t recv_size) {
 	if (recv_size < sizeof(ip_header_t)) {
 		DEBUGERR("recv_size < sizeof(ip_header_t): %zu < %zu", recv_size, sizeof(ip_header_t));
 		return VR_IGNORED;
@@ -20,7 +20,7 @@ t_validation_result	validate_receipt_raw_data(size_t recv_size) {
 }
 
 // IPレベルのバリデーション
-t_validation_result	validate_receipt_ip(
+static t_validation_result	validate_receipt_ip(
 	size_t recv_size,
 	const ip_header_t* receipt_ip_header,
 	const socket_address_in_t* addr_to
@@ -77,7 +77,7 @@ t_validation_result	validate_receipt_ip(
 //   - [VR_REJECTED] 長さが適切である(=データの先頭に timeval_t が1つ入る余裕がある)こと
 //   - [VR_IGNORED] IDが一致すること
 //   - [VR_WARNING] チェックサムがgoodであること
-t_validation_result	validate_receipt_icmp(
+static t_validation_result	validate_receipt_icmp(
 	const t_ping* ping,
 	void* receipt_icmp,
 	size_t icmp_whole_len
@@ -118,4 +118,27 @@ t_validation_result	validate_receipt_icmp(
 	}
 
 	return result;
+}
+
+int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_address_in_t* addr_to) {
+	debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->receipt_len);
+	t_validation_result	result = validate_receipt_raw_data(acceptance->receipt_len);
+	if (result != VR_ACCEPTED) {
+		return 1;
+	}
+	ip_convert_endian(acceptance->recv_buffer);
+	debug_ip_header(acceptance->recv_buffer);
+	if (validate_receipt_ip(acceptance->receipt_len, (ip_header_t*)acceptance->recv_buffer, addr_to) != VR_ACCEPTED) {
+		return 1;
+	}
+	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
+	const size_t		ip_header_len = acceptance->ip_header->ihl * 4;
+	acceptance->icmp_whole_len = acceptance->receipt_len  - ip_header_len;
+	acceptance->icmp_header = (icmp_header_t*)(acceptance->recv_buffer + ip_header_len);
+	if (validate_receipt_icmp(ping, acceptance->icmp_header, acceptance->icmp_whole_len) != VR_ACCEPTED) {
+		return 1;
+	}
+	icmp_convert_endian(acceptance->icmp_header);
+	// debug_icmp_header(acceptance->icmp_header);
+	return 0;
 }
