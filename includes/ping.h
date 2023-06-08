@@ -57,6 +57,7 @@ typedef enum e_received_result {
 }	t_received_result;
 
 #define	RECV_BUFFER_LEN 4096
+// 受信データを管理する構造体
 typedef struct s_acceptance {
 	// 受信用バッファ
 	uint8_t			recv_buffer[RECV_BUFFER_LEN];
@@ -86,11 +87,10 @@ typedef struct s_stat_data {
 	size_t	rtts_cap;
 }	t_stat_data;
 
-// オプション構造体
-typedef struct s_options
+typedef struct s_preferences
 {
-
-} t_options;
+	bool	verbose;
+} t_preferences;
 
 // ターゲット構造体
 typedef struct s_target
@@ -102,13 +102,16 @@ typedef struct s_target
 // マスター構造体
 typedef struct s_ping
 {
-	t_target	target;
+	t_target		target;
 
-	uint16_t	icmp_header_id;
-	int			socket_fd;
-	t_stat_data	stat_data;
-	t_options	options;
+	uint16_t		icmp_header_id;
+	int				socket_fd;
+	t_stat_data		stat_data;
+	t_preferences	prefs;
 } t_ping;
+
+// option.c
+int	parse_option(int argc, char** argv, t_preferences* pref);
 
 // address.c
 int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr);

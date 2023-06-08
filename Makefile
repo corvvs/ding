@@ -3,6 +3,7 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
+			option.c\
 			address.c\
 			socket.c\
 			ping_pong.c\
