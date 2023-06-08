@@ -49,16 +49,12 @@ typedef struct sockaddr_in	socket_address_in_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
-typedef enum e_validation_result {
-	VR_ACCEPTED,
-	VR_IGNORED,
-}	t_validation_result;
-
-typedef enum e_receipt_result {
+typedef enum e_received_result {
 	RR_SUCCESS,
 	RR_TIMEOUT,
+	RR_INTERRUPTED,
 	RR_ERROR,
-}	t_receipt_result;
+}	t_received_result;
 
 #define	RECV_BUFFER_LEN 4096
 typedef struct s_acceptance {
@@ -67,7 +63,7 @@ typedef struct s_acceptance {
 	// 受信用バッファのサイズ
 	size_t			recv_buffer_len;
 	// 受信サイズ
-	size_t			receipt_len;
+	size_t			received_len;
 	// IPヘッダ
 	ip_header_t*	ip_header;
 	// ICMPヘッダ
@@ -75,7 +71,7 @@ typedef struct s_acceptance {
 	// ICMP全体サイズ
 	size_t			icmp_whole_len;
 	// 受信時刻
-	timeval_t		epoch_receipt;
+	timeval_t		epoch_received;
 }	t_acceptance;
 
 // 統計情報の元データを管理する構造体
@@ -83,7 +79,7 @@ typedef struct s_stat_data {
 	// 送信済みパケット数
 	size_t	packets_sent;
 	// 受信済みパケット数
-	size_t	packets_receipt;
+	size_t	packets_received;
 	// ラウンドトリップ数
 	double*	rtts;
 	// ラウンドトリップ数のキャパシティ
@@ -131,7 +127,7 @@ int	send_request(
 );
 
 // receiver.c
-t_receipt_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
+t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // ip.c
 void	ip_convert_endian(void* mem);
@@ -155,7 +151,7 @@ timeval_t	add_times(timeval_t* a, timeval_t* b);
 timeval_t	sub_times(timeval_t* a, timeval_t* b);
 
 // stats.c
-double	mark_receipt(t_ping* ping, const t_acceptance* acceptance);
+double	mark_received(t_ping* ping, const t_acceptance* acceptance);
 void	print_stats(const t_ping* ping);
 
 // math.c
