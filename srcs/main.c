@@ -2,14 +2,6 @@
 
 int	g_is_little_endian;
 
-// 与えられた宛先から sockaddr_in を生成する
-socket_address_in_t	retrieve_addr(const t_ping* ping) {
-	socket_address_in_t addr = {};
-	addr.sin_family = AF_INET;
-	inet_pton(AF_INET, ping->target.resolved_host, &addr.sin_addr);
-	return addr;
-}
-
 sig_atomic_t volatile g_interrupted = 0;
 
 void	sig_int(int signal) {
@@ -19,25 +11,24 @@ void	sig_int(int signal) {
 
 // 1つの宛先に対して ping セッションを実行する
 int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
+
+	// [初期出力]
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
-	// 送信前出力
 	printf("PING %s (%s): %zu data bytes\n",
 		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
 
+	// [シグナルハンドラ設定]
 	g_interrupted = 0;
 	signal(SIGINT, sig_int);
-
-	// [ICMPヘッダを準備する]
+	// [送受信ループ]
 	for (uint16_t	sequence = 0; g_interrupted == 0; sequence += 1) {
 
-		uint8_t datagram_buffer[ICMP_ECHO_DATAGRAM_SIZE] = {0};
-		deploy_datagram(ping, datagram_buffer, sizeof(datagram_buffer), sequence);
-
-		// 送信!!
-		if (send_ping(ping, datagram_buffer, sizeof(datagram_buffer), addr_to) < 0) {
+		// [送信: Echo Request]
+		if (send_request(ping, addr_to, sequence) < 0) {
 			break;
 		}
-		// ECHO応答の受信を待機する
+
+		// [受信: Echo Reply]
 		t_acceptance	acceptance = {
 			.recv_buffer_len = RECV_BUFFER_LEN,
 		};
@@ -48,7 +39,7 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 			break;
 		}
 		const double triptime = mark_receipt(ping, &acceptance);
-		// 受信時出力
+		// [受信時出力]
 		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 			acceptance.icmp_whole_len,
 			ping->target.resolved_host,
@@ -59,9 +50,9 @@ int	run_ping_session(t_ping* ping, const socket_address_in_t* addr_to) {
 
 		sleep(1);
 	}
-	// 統計情報を表示する
-	print_stats(ping);
 
+	// [最終出力]
+	print_stats(ping);
 
 	return 0;
 }
@@ -96,23 +87,20 @@ int main(int argc, char **argv) {
 	// ソケットは全宛先で使い回すので最初に生成する
 	ping.socket_fd = create_icmp_socket();
 
-	{
-		if (resolve_host(&ping.target)) {
+	do {
+		ping.stat_data = (t_stat_data){};
+		socket_address_in_t	addr = {0};
+		// [アドレス変換]
+		if (retrieve_address_to(&ping, &addr)) {
 			return -1;
 		}
-		DEBUGWARN("given:    %s", ping.target.given_host);
-		DEBUGWARN("resolved: %s", ping.target.resolved_host);
-
-		// [アドレス変換]
-		socket_address_in_t	addr = retrieve_addr(&ping);
 
 		// [エコー送信]
 		run_ping_session(&ping, &addr);
 
 		// [宛先単位の後処理]
 		free(ping.stat_data.rtts);
-		ping.stat_data = (t_stat_data){};
-	}
+	} while (0);
 
 	// [全体の後処理]
 	close(ping.socket_fd);

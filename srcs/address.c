@@ -1,6 +1,6 @@
 #include "ping.h"
 
-int	resolve_host(t_target* target) {
+static int	resolve_host(t_target* target) {
 	address_info_t	hints;
 	address_info_t*	res;
 	ft_memset(&hints, 0, sizeof(hints));
@@ -30,6 +30,21 @@ int	resolve_host(t_target* target) {
 	if (resolved == NULL) {
 		DEBUGERR("inet_ntop failed: %d(%s)", errno, strerror(errno));
 		printf("ping: unknown host\n");
+		return -1;
+	}
+	DEBUGWARN("given:    %s", target->given_host);
+	DEBUGWARN("resolved: %s", target->resolved_host);
+	return 0;
+}
+
+// 与えられた宛先から sockaddr_in を生成する
+int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr) {
+	if (resolve_host(&ping->target)) {
+		return -1;
+	}
+	addr->sin_family = AF_INET;
+	if (inet_pton(AF_INET, ping->target.resolved_host, &addr->sin_addr) != 1) {
+		DEBUGERR("inet_pton() failed: %d(%s)", errno, strerror(errno));
 		return -1;
 	}
 	return 0;

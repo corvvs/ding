@@ -108,24 +108,17 @@ typedef struct s_ping
 	t_options	options;
 } t_ping;
 
-// host.c
-int	resolve_host(t_target* target);
+// address.c
+int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr);
 
 // socket.c
 int create_icmp_socket(void);
 
 // sender.c
-void	deploy_datagram(
-	const t_ping* ping,
-	uint8_t* datagram_buffer,
-	size_t datagram_len,
-	uint16_t sequence
-);
-int	send_ping(
+int	send_request(
 	t_ping* ping,
-	const uint8_t* datagram_buffer,
-	size_t datagram_len,
-	const socket_address_in_t* addr
+	const socket_address_in_t* addr,
+	uint16_t sequence
 );
 
 // receiver.c
