@@ -1,23 +1,8 @@
 #include "ping.h"
 
-static int	recv_ping(const t_ping* ping, struct msghdr* msg) {
-
-	int rv = recvmsg(
-		ping->socket_fd,
-		msg,
-		0
-	);
-	if (rv < 0) {
-		DEBUGOUT("EAGAIN: %d", EAGAIN);
-		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
-	}
-	return rv;
-}
-
-int	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
+t_receipt_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 	struct msghdr		msg_receipt;
 	struct iovec		iov_receipt;
-	// socket_address_in_t	sa;
 	ft_memset(&msg_receipt, 0, sizeof(msg_receipt));
 	msg_receipt.msg_name = NULL;
 	msg_receipt.msg_namelen = 0;
@@ -25,17 +10,22 @@ int	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 	msg_receipt.msg_iovlen = 1;
 	iov_receipt.iov_base = acceptance->recv_buffer;
 	iov_receipt.iov_len = acceptance->recv_buffer_len;
-	int rv = recv_ping(ping, &msg_receipt);
+	int rv = recvmsg(ping->socket_fd, &msg_receipt, 0);
 	if (rv < 0) {
+		if (errno == EAGAIN) {
+			DEBUGOUT("timed out: %d", errno);
+			return RR_TIMEOUT;
+		}
 		DEBUGERR("recv_ping failed: %d(%s)", errno, strerror(errno));
-		return rv;
+		return RR_ERROR;
 	}
 	if (rv == 0) {
+		// ソケットが閉じた -> 異常事態なので終了
 		DEBUGERR("socket has been closed UNEXPECTEDLY: %d(%s)", errno, strerror(errno));
-		return rv;
+		exit(-1);
 	}
 	acceptance->epoch_receipt = get_current_time();
 	acceptance->receipt_len = rv;
-	return rv;
+	return RR_SUCCESS;
 }
 

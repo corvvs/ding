@@ -54,6 +54,12 @@ typedef enum e_validation_result {
 	VR_IGNORED,
 }	t_validation_result;
 
+typedef enum e_receipt_result {
+	RR_SUCCESS,
+	RR_TIMEOUT,
+	RR_ERROR,
+}	t_receipt_result;
+
 #define	RECV_BUFFER_LEN 4096
 typedef struct s_acceptance {
 	// 受信用バッファ
@@ -125,7 +131,7 @@ int	send_request(
 );
 
 // receiver.c
-int	receive_reply(const t_ping* ping, t_acceptance* acceptance);
+t_receipt_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // ip.c
 void	ip_convert_endian(void* mem);
@@ -145,7 +151,8 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_addres
 
 // time.c
 timeval_t	get_current_time(void);
-double		get_current_epoch_ms(void);
+timeval_t	add_times(timeval_t* a, timeval_t* b);
+timeval_t	sub_times(timeval_t* a, timeval_t* b);
 
 // stats.c
 double	mark_receipt(t_ping* ping, const t_acceptance* acceptance);
