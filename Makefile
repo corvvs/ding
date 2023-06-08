@@ -3,7 +3,7 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
-			host.c\
+			address.c\
 			socket.c\
 			sender.c\
 			receiver.c\
