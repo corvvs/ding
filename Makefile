@@ -5,6 +5,7 @@ FILES	:=	\
 			main.c\
 			address.c\
 			socket.c\
+			ping_pong.c\
 			sender.c\
 			receiver.c\
 			ip.c\

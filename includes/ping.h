@@ -114,6 +114,9 @@ int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr);
 // socket.c
 int create_icmp_socket(void);
 
+// ping_pong.c
+int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to);
+
 // sender.c
 int	send_request(
 	t_ping* ping,
