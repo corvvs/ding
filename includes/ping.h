@@ -49,12 +49,37 @@ typedef struct sockaddr_in	socket_address_in_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
+typedef enum e_received_result {
+	RR_SUCCESS,
+	RR_TIMEOUT,
+	RR_INTERRUPTED,
+	RR_ERROR,
+}	t_received_result;
+
+#define	RECV_BUFFER_LEN 4096
+typedef struct s_acceptance {
+	// 受信用バッファ
+	uint8_t			recv_buffer[RECV_BUFFER_LEN];
+	// 受信用バッファのサイズ
+	size_t			recv_buffer_len;
+	// 受信サイズ
+	size_t			received_len;
+	// IPヘッダ
+	ip_header_t*	ip_header;
+	// ICMPヘッダ
+	icmp_header_t*	icmp_header;
+	// ICMP全体サイズ
+	size_t			icmp_whole_len;
+	// 受信時刻
+	timeval_t		epoch_received;
+}	t_acceptance;
+
 // 統計情報の元データを管理する構造体
 typedef struct s_stat_data {
 	// 送信済みパケット数
 	size_t	packets_sent;
 	// 受信済みパケット数
-	size_t	packets_receipt;
+	size_t	packets_received;
 	// ラウンドトリップ数
 	double*	rtts;
 	// ラウンドトリップ数のキャパシティ
@@ -79,13 +104,30 @@ typedef struct s_ping
 {
 	t_target	target;
 
+	uint16_t	icmp_header_id;
 	int			socket_fd;
 	t_stat_data	stat_data;
 	t_options	options;
 } t_ping;
 
-// host.c
-int	resolve_host(t_target* target);
+// address.c
+int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr);
+
+// socket.c
+int create_icmp_socket(void);
+
+// ping_pong.c
+int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to);
+
+// sender.c
+int	send_request(
+	t_ping* ping,
+	const socket_address_in_t* addr,
+	uint16_t sequence
+);
+
+// receiver.c
+t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // ip.c
 void	ip_convert_endian(void* mem);
@@ -101,21 +143,15 @@ uint32_t	swap_4byte(uint32_t value);
 uint64_t	swap_8byte(uint64_t value);
 
 // validator.c
-int			validate_receipt_data(
-	const socket_address_in_t* addr_to,
-	const ip_header_t* receipt_ip_hd,
-	void* receipt_icmp_hd,
-	size_t icmp_len
-);
-
+int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_address_in_t* addr_to);
 
 // time.c
 timeval_t	get_current_time(void);
-double		get_current_epoch_ms(void);
+timeval_t	add_times(timeval_t* a, timeval_t* b);
+timeval_t	sub_times(timeval_t* a, timeval_t* b);
 
 // stats.c
-timeval_t	mark_sent(t_ping* ping);
-double	mark_receipt(t_ping* ping, const void* receipt_icmp, const timeval_t* epoch_receipt);
+double	mark_received(t_ping* ping, const t_acceptance* acceptance);
 void	print_stats(const t_ping* ping);
 
 // math.c
@@ -124,6 +160,7 @@ double	ft_sqrt(double x);
 
 // debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);
+void	debug_msg_flags(const struct msghdr* msg);
 void	debug_ip_header(const void* mem);
 void	debug_icmp_header(const void* mem);
 

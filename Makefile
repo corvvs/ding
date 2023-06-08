@@ -3,7 +3,11 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
-			host.c\
+			address.c\
+			socket.c\
+			ping_pong.c\
+			sender.c\
+			receiver.c\
 			ip.c\
 			icmp.c\
 			endian.c\
