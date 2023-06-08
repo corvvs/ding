@@ -6,23 +6,31 @@ int main(int argc, char **argv) {
 	if (argc < 1) {
 		return 1;
 	}
-
 	// NOTE: プログラム名は使用しない
 	argc -= 1;
 	argv += 1;
 
-	// TODO: オプションの解析
+	// オプションの解析
+	t_preferences	pref = {0};
+	int parsed = parse_option(argc, argv, &pref);
+	if (parsed < 0) {
+		return 64;
+	}
+	argc -= parsed;
+	argv += parsed;
 
 	if (argc < 1) {
 		printf("ping: missing host operand\n");
 		return 64; // なぜ 64 なのか...
 	}
 
+	DEBUGOUT("argv: %s", *argv);
 	t_ping ping = {
 		.target = {
 			.given_host = *argv,
 		},
 		.icmp_header_id = getpid(),
+		.prefs = pref,
 	};
 
 	g_is_little_endian = is_little_endian();
@@ -33,6 +41,7 @@ int main(int argc, char **argv) {
 	ping.socket_fd = create_icmp_socket();
 
 	do {
+		DEBUGOUT("%s", "<start session>");
 		ping.stat_data = (t_stat_data){};
 		socket_address_in_t	addr = {0};
 		// [アドレス変換]

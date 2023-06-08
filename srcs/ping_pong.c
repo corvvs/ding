@@ -13,9 +13,12 @@ int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to) {
 
 	// [初期出力]
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
-	printf("PING %s (%s): %zu data bytes\n",
+	printf("PING %s (%s): %zu data bytes",
 		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
-
+	if (ping->prefs.verbose) {
+		printf(", id = 0x%04x", ping->icmp_header_id);
+	}
+	printf("\n");
 	// [シグナルハンドラ設定]
 	g_interrupted = 0;
 	signal(SIGINT, sig_int);
