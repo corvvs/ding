@@ -8,6 +8,19 @@ void	sig_int(int signal) {
 	g_interrupted = 1;
 }
 
+static int	should_continue_pinging(const t_ping* ping) {
+	// 割り込みがあった -> No
+	if (g_interrupted) {
+		return false;
+	}
+	// カウントが設定されている and 受信数がカウント以上に達した ->	No
+	if (ping->prefs.count > 0 && ping->stat_data.packets_received >= ping->prefs.count) {
+		return false;
+	}
+	// Yes!!
+	return true;
+}
+
 // 1つの宛先に対して ping セッションを実行する
 int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to) {
 
@@ -36,7 +49,7 @@ int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to) {
 
 	// [送受信ループ]
 	uint16_t	sequence = 0;
-	for (; g_interrupted == 0 ;) {
+	while (should_continue_pinging(ping)) {
 		if (ping->stat_data.packets_sent == 0 || receiving_timed_out) {
 			// [送信: Echo Request]
 			receiving_timed_out = false;
