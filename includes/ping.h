@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/ip.h>
@@ -90,6 +91,7 @@ typedef struct s_stat_data {
 typedef struct s_preferences
 {
 	bool	verbose;
+	size_t	count;
 } t_preferences;
 
 // ターゲット構造体
