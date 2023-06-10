@@ -22,8 +22,8 @@ static int	should_continue_pinging(const t_ping* ping) {
 }
 
 // 1つの宛先に対して ping セッションを実行する
-int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to) {
-
+int	ping_pong(t_ping* ping) {
+	const socket_address_in_t* addr_to = &ping->target.addr_to;
 	// [初期出力]
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
 	printf("PING %s (%s): %zu data bytes",

@@ -97,8 +97,9 @@ typedef struct s_preferences
 // ターゲット構造体
 typedef struct s_target
 {
-	const char*	given_host;
-	char		resolved_host[16];
+	const char*				given_host;
+	char					resolved_host[16];
+	socket_address_in_t		addr_to;
 } t_target;
 
 // マスター構造体
@@ -116,13 +117,13 @@ typedef struct s_ping
 int	parse_option(int argc, char** argv, t_preferences* pref);
 
 // address.c
-int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr);
+int	retrieve_target(const char* host, t_target* target);
 
 // socket.c
 int create_icmp_socket(void);
 
 // ping_pong.c
-int	ping_pong(t_ping* ping, const socket_address_in_t* addr_to);
+int	ping_pong(t_ping* ping);
 
 // sender.c
 int	send_request(

@@ -3,6 +3,7 @@
 int	g_is_little_endian;
 
 int main(int argc, char **argv) {
+	g_is_little_endian = is_little_endian();
 	if (argc < 1) {
 		return 1;
 	}
@@ -24,33 +25,26 @@ int main(int argc, char **argv) {
 		return 64; // なぜ 64 なのか...
 	}
 
-	DEBUGOUT("argv: %s", *argv);
 	t_ping ping = {
-		.target = {
-			.given_host = *argv,
-		},
 		.icmp_header_id = getpid(),
 		.prefs = pref,
 	};
-
-	g_is_little_endian = is_little_endian();
-	DEBUGWARN("g_is_little_endian: %d", g_is_little_endian);
 
 	// [ソケット作成]
 	// ソケットは全宛先で使い回すので最初に生成する
 	ping.socket_fd = create_icmp_socket();
 
-	do {
-		DEBUGOUT("%s", "<start session>");
-		ping.stat_data = (t_stat_data){};
-		socket_address_in_t	addr = {0};
+	for (; argc > 0; argc--, argv++) {
+		const char*	given_host = *argv;
+		DEBUGOUT("<start session for \"%s\">", given_host);
 		// [アドレス変換]
-		if (retrieve_address_to(&ping, &addr)) {
-			return -1;
+		if (retrieve_target(given_host, &ping.target)) {
+			break;
 		}
 
 		// [エコー送信]
-		ping_pong(&ping, &addr);
+		ping.stat_data = (t_stat_data){};
+		ping_pong(&ping);
 
 		// [宛先単位の後処理]
 		free(ping.stat_data.rtts);

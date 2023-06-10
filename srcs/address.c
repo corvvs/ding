@@ -10,7 +10,6 @@ static int	resolve_host(t_target* target) {
 	DEBUGWARN("status: %d", status);
 	if (status < 0) {
 		printf("ping: unknown host\n");
-		freeaddrinfo(res);
 		return -1;
 	}
 	DEBUGWARN("ai_family: %d", res->ai_family);
@@ -38,12 +37,14 @@ static int	resolve_host(t_target* target) {
 }
 
 // 与えられた宛先から sockaddr_in を生成する
-int	retrieve_address_to(t_ping* ping, socket_address_in_t* addr) {
-	if (resolve_host(&ping->target)) {
+int	retrieve_target(const char* host, t_target* target) {
+	target->given_host = host;
+	if (resolve_host(target)) {
 		return -1;
 	}
+	socket_address_in_t* addr = &target->addr_to;
 	addr->sin_family = AF_INET;
-	if (inet_pton(AF_INET, ping->target.resolved_host, &addr->sin_addr) != 1) {
+	if (inet_pton(AF_INET, target->resolved_host, &addr->sin_addr) != 1) {
 		DEBUGERR("inet_pton() failed: %d(%s)", errno, strerror(errno));
 		return -1;
 	}
