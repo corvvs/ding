@@ -4,7 +4,7 @@ static int	resolve_host(t_target* target) {
 	address_info_t	hints;
 	address_info_t*	res;
 	ft_memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	int status = getaddrinfo(target->given_host, NULL, &hints, &res);
 	DEBUGWARN("status: %d", status);

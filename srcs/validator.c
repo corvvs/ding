@@ -33,7 +33,7 @@ static int	validate_received_ip_preliminary(
 
 	// CHECK: 受信サイズ == トータルサイズ であることを確認する
 	if (recv_size != received_ip_header->IP_HEADER_LEN) {
-		DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, received_ip_header->IP_HEADER_LEN);
+		DEBUGERR("size doesn't match: rv: %zu(%zx), tot_len: %u", recv_size, recv_size, received_ip_header->IP_HEADER_LEN);
 		return -1;
 	}
 	const size_t	ip_header_len = received_ip_header->IP_HEADER_HL * 4;

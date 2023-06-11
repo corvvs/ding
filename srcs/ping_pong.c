@@ -19,18 +19,28 @@ static bool	reached_pong_limit(const t_ping* ping) {
 static bool	should_continue_pinging(const t_ping* ping, bool receiving_timed_out) {
 	// 割り込みがあった -> No
 	if (g_interrupted) {
+		DEBUGWARN("%s", "interrupted");
 		return false;
 	}
 	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, timed_out: %d",
 		ping->prefs.count, ping->stat_data.packets_sent, ping->stat_data.packets_received, receiving_timed_out);
 	// カウントが設定されている and 受信数がカウント以上に達した and タイムアウトした
 	if (reached_ping_limit(ping) && receiving_timed_out) {
-		DEBUGOUT("ping limit reached: %zu", ping->prefs.count);
+		DEBUGWARN("ping limit reached: %zu", ping->prefs.count);
 		return false;
 	}
 	if (reached_pong_limit(ping)) {
-		DEBUGOUT("pong limit reached: %zu", ping->prefs.count);
+		DEBUGWARN("pong limit reached: %zu", ping->prefs.count);
 		return false;
+	}
+	
+	if (ping->prefs.session_timeout_s > 0) {
+		timeval_t	t = get_current_time();
+		t = sub_times(&t, &ping->start_time);
+		if (ping->prefs.session_timeout_s * 1000.0 < get_ms(&t)) {
+			DEBUGWARN("session timeout reached: %lu", ping->prefs.session_timeout_s);
+			return false;
+		}
 	}
 	// Yes!!
 	return true;
@@ -48,7 +58,7 @@ int	ping_pong(t_ping* ping) {
 	}
 	printf("\n");
 	// [シグナルハンドラ設定]
-	g_interrupted = 0;
+	g_interrupted = 0; // TODO: セッションごとにリセット**しない**
 	signal(SIGINT, sig_int);
 
 	// タイムアウトの計算
@@ -56,13 +66,13 @@ int	ping_pong(t_ping* ping) {
 		.tv_sec = 1,
 		.tv_usec = 0,
 	};
-	timeval_t	now = get_current_time();
 
 	// 受信タイムアウトしたかどうか
 	bool	receiving_timed_out = false;
 
 	// [送受信ループ]
 	uint16_t	sequence = 0;
+	ping->start_time = get_current_time();
 
 	// preload
 	for (size_t n = 0; n < ping->prefs.preload; n += 1, sequence += 1) {
@@ -70,8 +80,9 @@ int	ping_pong(t_ping* ping) {
 			break;
 		}
 	}
-	timeval_t	last_request_sent = get_current_time();
-	const timeval_t	final_timeout = {
+	timeval_t		now = get_current_time();
+	timeval_t		last_request_sent = get_current_time();
+	const timeval_t	receiving_timeout = {
 		.tv_sec = ping->prefs.wait_after_final_request_s,
 		.tv_usec = 0,
 	};
@@ -93,7 +104,7 @@ int	ping_pong(t_ping* ping) {
 			now = get_current_time();
 			const timeval_t	elapsed_from_last_ping = sub_times(&now, &last_request_sent);
 			timeval_t	recv_timeout = sub_times(
-				reached_ping_limit(ping) ? &final_timeout : &interval_request,
+				reached_ping_limit(ping) ? &receiving_timeout : &interval_request,
 				&elapsed_from_last_ping);
 			if (recv_timeout.tv_sec < 0 || recv_timeout.tv_usec < 0) {
 				DEBUGOUT("recv_timeout: %.3fms -> zeroize", get_ms(&recv_timeout));
