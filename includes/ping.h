@@ -69,10 +69,16 @@ typedef struct s_stat_data {
 
 typedef struct s_preferences
 {
-	bool	verbose;
-	size_t	count;
-	int		ttl;
-	size_t	preload;
+	// verbose モード
+	bool		verbose;
+	// request 送信数
+	size_t		count;
+	// request TTL
+	int			ttl;
+	// preload 送信数
+	size_t		preload;
+	// 最後の request 送信後の待機時間(秒)
+	uint64_t	wait_after_final_request_s;
 } t_preferences;
 
 // ターゲット構造体
@@ -96,6 +102,7 @@ typedef struct s_ping
 
 // option.c
 int	parse_option(int argc, char** argv, t_preferences* pref);
+t_preferences	default_preferences(void);
 
 // address.c
 int	retrieve_target(const char* host, t_target* target);
@@ -140,8 +147,9 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_addres
 
 // time.c
 timeval_t	get_current_time(void);
-timeval_t	add_times(timeval_t* a, timeval_t* b);
-timeval_t	sub_times(timeval_t* a, timeval_t* b);
+timeval_t	add_times(const timeval_t* a, const timeval_t* b);
+timeval_t	sub_times(const timeval_t* a, const timeval_t* b);
+double		get_ms(const timeval_t* a);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);

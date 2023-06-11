@@ -6,3 +6,4 @@ services:
       - .:/home
     working_dir: /home 
     tty: true
+    privileged: true

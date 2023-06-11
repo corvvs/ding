@@ -17,7 +17,7 @@ void	normalize_time(timeval_t* t) {
 	}
 }
 
-timeval_t	add_times(timeval_t* a, timeval_t* b) {
+timeval_t	add_times(const timeval_t* a, const timeval_t* b) {
 	timeval_t	c = {
 		.tv_sec = a->tv_sec + b->tv_sec,
 		.tv_usec = a->tv_usec + b->tv_usec,
@@ -26,11 +26,15 @@ timeval_t	add_times(timeval_t* a, timeval_t* b) {
 	return c;
 }
 
-timeval_t	sub_times(timeval_t* a, timeval_t* b) {
+timeval_t	sub_times(const timeval_t* a, const timeval_t* b) {
 	timeval_t	c = {
 		.tv_sec = a->tv_sec - b->tv_sec,
 		.tv_usec = a->tv_usec - b->tv_usec,
 	};
 	normalize_time(&c);
 	return c;
+}
+
+double	get_ms(const timeval_t* a) {
+	return a->tv_sec * 1000.0 + a->tv_usec / 1000.0;
 }

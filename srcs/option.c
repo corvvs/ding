@@ -144,6 +144,17 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 					break;
 				}
 
+				// deadline
+				case 'W': {
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, INT_MAX, 1)) {
+						return -1;
+					}
+					pref->wait_after_final_request_s = rv;
+					break;
+				}
+
 				default:
 					// 未知のオプション
 					DEBUGERR("ping: invalid option -- '%c'", *arg);
@@ -155,4 +166,13 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 		argv += 1;
 	}
 	return parsed;
+}
+
+t_preferences	default_preferences(void) {
+	return (t_preferences){
+		.verbose = false,
+		.count = 0,
+		.ttl = 64,
+		.wait_after_final_request_s = 10,
+	};
 }
