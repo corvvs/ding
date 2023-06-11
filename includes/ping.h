@@ -185,6 +185,9 @@ void	ip_convert_endian(void* mem);
 void		icmp_convert_endian(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
 
+// unexpected_icmp.c
+void	print_unexpected_icmp(t_acceptance* acceptance);
+
 // endian.c
 bool		is_little_endian(void);
 uint16_t	swap_2byte(uint16_t value);

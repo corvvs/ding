@@ -11,6 +11,7 @@ FILES	:=	\
 			receiver.c\
 			ip.c\
 			icmp.c\
+			unexpected_icmp.c\
 			endian.c\
 			validator.c\
 			time.c\

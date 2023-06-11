@@ -15,6 +15,7 @@ static int	should_continue_pinging(const t_ping* ping) {
 	}
 	// カウントが設定されている and 受信数がカウント以上に達した ->	No
 	if (ping->prefs.count > 0 && ping->stat_data.packets_received >= ping->prefs.count) {
+		DEBUGOUT("ping->prefs.count: %zu", ping->prefs.count);
 		return false;
 	}
 	// Yes!!
@@ -92,7 +93,7 @@ int	ping_pong(t_ping* ping) {
 				}
 			}
 			if (check_acceptance(ping, &acceptance, addr_to)) {
-				break;
+				continue;
 			}
 			const double triptime = mark_received(ping, &acceptance);
 			// [受信時出力]
