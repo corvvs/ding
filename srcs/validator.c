@@ -33,7 +33,7 @@ static int	validate_received_ip_preliminary(
 
 	// CHECK: 受信サイズ == トータルサイズ であることを確認する
 	if (recv_size != received_ip_header->IP_HEADER_LEN) {
-		DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, received_ip_header->tot_len);
+		DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, received_ip_header->IP_HEADER_LEN);
 		return -1;
 	}
 	const size_t	ip_header_len = received_ip_header->IP_HEADER_HL * 4;
@@ -127,7 +127,7 @@ static int	validate_received_icmp_echo_reply(
 }
 
 int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_address_in_t* addr_to) {
-	debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
+	// debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
 	if (validate_received_raw_data(acceptance->received_len)) {
 		return 1;
 	}

@@ -60,6 +60,34 @@ size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	return negative ? -ans : ans;
 }
 
+int parse_number(const char* str, unsigned long* out, unsigned long max, unsigned long min) {
+	char*		err;
+	unsigned long rv = ft_strtoul(str, &err, 0);
+	if (*err) {
+		DEBUGERR("invalid value (`%s' near `%s')", str, err);
+		return -1;
+	}
+	if (rv > max) {
+		DEBUGERR("option value too big: %s", str);
+		return -1;
+	}
+	if (rv < min) {
+		DEBUGERR("option value too small: %s", str);
+		return -1;
+	}
+	*out = rv;
+	return 0;
+}
+
+#define PICK_ONE_ARG \
+	if (argc < 2) {\
+		DEBUGERR("ping: option requires an argument -- '%c'", *arg);\
+		return -1;\
+	}\
+	parsed += 1;\
+	argc -= 1;\
+	argv += 1
+
 int	parse_option(int argc, char** argv, t_preferences* pref) {
 	int parsed = 0;
 	while (argc > 0) {
@@ -85,44 +113,34 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 
 				// count
 				case 'c': {
-					if (argc < 2) {
-						DEBUGERR("ping: option requires an argument -- '%c'", *arg);
-						return -1;
-					}
-					parsed += 1;
-					argc -= 1;
-					argv += 1;
-					const char*	str = *argv;
-					char*		err;
-					unsigned long rv = ft_strtoul(str, &err, 0);
-					if (*err) {
-						DEBUGERR("invalid value (`%s' near `%s')", str, err);
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, ULONG_MAX, 0)) {
 						return -1;
 					}
 					pref->count = rv;
 					break;
 				}
+
 				// ttl
 				case 'm': {
-					if (argc < 2) {
-						DEBUGERR("ping: option requires an argument -- '%c'", *arg);
-						return -1;
-					}
-					parsed += 1;
-					argc -= 1;
-					argv += 1;
-					const char*	str = *argv;
-					char*		err;
-					unsigned long rv = ft_strtoul(str, &err, 0);
-					if (*err) {
-						DEBUGERR("invalid value (`%s' near `%s')", str, err);
-						return -1;
-					}
-					if (rv > 255) {
-						DEBUGERR("option value too big: %s", str);
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, 255, 1)) {
 						return -1;
 					}
 					pref->ttl = rv;
+					break;
+				}
+
+				// preload
+				case 'l': {
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, INT_MAX, 0)) {
+						return -1;
+					}
+					pref->preload = rv;
 					break;
 				}
 
