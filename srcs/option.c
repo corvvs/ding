@@ -144,7 +144,18 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 					break;
 				}
 
-				// deadline
+				// セッションタイムアウト
+				case 'w': {
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, INT_MAX, 1)) {
+						return -1;
+					}
+					pref->session_timeout_s = rv;
+					break;
+				}
+
+				// 最終送信後タイムアウト
 				case 'W': {
 					PICK_ONE_ARG;
 					unsigned long rv;
@@ -173,6 +184,7 @@ t_preferences	default_preferences(void) {
 		.verbose = false,
 		.count = 0,
 		.ttl = 64,
+		.session_timeout_s = 0,
 		.wait_after_final_request_s = 10,
 	};
 }

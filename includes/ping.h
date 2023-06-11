@@ -79,6 +79,8 @@ typedef struct s_preferences
 	size_t		preload;
 	// 最後の request 送信後の待機時間(秒)
 	uint64_t	wait_after_final_request_s;
+	// pingセッションのタイムアウト時間(秒)
+	uint64_t	session_timeout_s;
 } t_preferences;
 
 // ターゲット構造体
@@ -97,6 +99,7 @@ typedef struct s_ping
 	uint16_t		icmp_header_id;
 	int				socket_fd;
 	t_stat_data		stat_data;
+	timeval_t		start_time;
 	t_preferences	prefs;
 } t_ping;
 
