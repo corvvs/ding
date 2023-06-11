@@ -84,7 +84,7 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 					break;
 
 				// count
-				case 'c':
+				case 'c': {
 					if (argc < 2) {
 						DEBUGERR("ping: option requires an argument -- '%c'", *arg);
 						return -1;
@@ -92,15 +92,39 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 					parsed += 1;
 					argc -= 1;
 					argv += 1;
-					const char*	number_str = *argv;
+					const char*	str = *argv;
 					char*		err;
-					pref->count = ft_strtoul(number_str, &err, 0);
-					DEBUGOUT("count = %lu", pref->count);
+					unsigned long rv = ft_strtoul(str, &err, 0);
 					if (*err) {
-						DEBUGERR("invalid value (`%s' near `%s')", number_str, err);
+						DEBUGERR("invalid value (`%s' near `%s')", str, err);
 						return -1;
 					}
+					pref->count = rv;
 					break;
+				}
+				// ttl
+				case 'm': {
+					if (argc < 2) {
+						DEBUGERR("ping: option requires an argument -- '%c'", *arg);
+						return -1;
+					}
+					parsed += 1;
+					argc -= 1;
+					argv += 1;
+					const char*	str = *argv;
+					char*		err;
+					unsigned long rv = ft_strtoul(str, &err, 0);
+					if (*err) {
+						DEBUGERR("invalid value (`%s' near `%s')", str, err);
+						return -1;
+					}
+					if (rv > 255) {
+						DEBUGERR("option value too big: %s", str);
+						return -1;
+					}
+					pref->ttl = rv;
+					break;
+				}
 
 				default:
 					// 未知のオプション

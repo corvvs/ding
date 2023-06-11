@@ -20,7 +20,25 @@
 #define ICMP_ECHO_REQUEST 8
 #define ICMP_ECHO_REPLY 0
 
+typedef struct timeval		timeval_t;
+typedef struct addrinfo		address_info_t;
+typedef struct sockaddr_in	socket_address_in_t;
+
 #ifdef __APPLE__
+
+typedef struct ip ip_header_t;
+#define IP_HEADER_VER	ip_v
+#define IP_HEADER_HL	ip_hl
+#define IP_HEADER_TOS	ip_tos
+#define IP_HEADER_LEN	ip_len
+#define IP_HEADER_ID	ip_id
+#define IP_HEADER_OFF	ip_off
+#define IP_HEADER_TTL	ip_ttl
+#define IP_HEADER_PROT	ip_p
+#define IP_HEADER_SUM	ip_sum
+typedef struct in_addr	address_in_t;
+#define IP_HEADER_SRC	ip_src
+#define IP_HEADER_DST	ip_dst
 
 typedef struct icmp	icmp_header_t;
 #define ICMP_HEADER_TYPE     icmp_type
@@ -30,9 +48,29 @@ typedef struct icmp	icmp_header_t;
 #define ICMP_HEADER_ID       icd_id
 #define ICMP_HEADER_SEQ      icd_seq
 
+typedef struct icmp	icmp_detailed_header_t;
+#define ICMP_DHEADER_TYPE			icmp_type
+#define ICMP_DHEADER_CODE			icmp_code
+#define ICMP_DHEADER_CHECKSUM		icmp_cksum
+#define ICMP_DHEADER_ORIGINAL_IP	icmp_dun.id_ip.idi_ip
+
 #else
 
-typedef struct icmphdr	icmp_header_t;
+typedef struct iphdr ip_header_t;
+#define IP_HEADER_VER	version
+#define IP_HEADER_HL	ihl
+#define IP_HEADER_TOS	tos
+#define IP_HEADER_LEN	tot_len
+#define IP_HEADER_ID	id
+#define IP_HEADER_OFF	frag_off
+#define IP_HEADER_TTL	ttl
+#define IP_HEADER_PROT	protocol
+#define IP_HEADER_SUM	check
+typedef uint32_t		address_in_t;
+#define IP_HEADER_SRC	saddr
+#define IP_HEADER_DST	daddr
+
+typedef struct icmphdr		icmp_header_t;
 #define ICMP_HEADER_TYPE     type
 #define ICMP_HEADER_CODE     code
 #define ICMP_HEADER_CHECKSUM checksum
@@ -40,12 +78,13 @@ typedef struct icmphdr	icmp_header_t;
 #define ICMP_HEADER_ID       id
 #define ICMP_HEADER_SEQ      sequence
 
-#endif
+typedef struct icmp	icmp_detailed_header_t;
+#define ICMP_DHEADER_TYPE			icmp_type
+#define ICMP_DHEADER_CODE			icmp_code
+#define ICMP_DHEADER_CHECKSUM		icmp_cksum
+#define ICMP_DHEADER_ORIGINAL_IP	icmp_dun.id_ip.idi_ip
 
-typedef struct iphdr ip_header_t;
-typedef struct timeval timeval_t;
-typedef struct addrinfo	address_info_t;
-typedef struct sockaddr_in	socket_address_in_t;
+#endif
 
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
@@ -92,6 +131,7 @@ typedef struct s_preferences
 {
 	bool	verbose;
 	size_t	count;
+	int		ttl;
 } t_preferences;
 
 // ターゲット構造体
@@ -118,9 +158,12 @@ int	parse_option(int argc, char** argv, t_preferences* pref);
 
 // address.c
 int	retrieve_target(const char* host, t_target* target);
+uint32_t	serialize_address(const address_in_t* addr);
+const char*	stringify_serialized_address(uint32_t addr32);
+const char*	stringify_address(const address_in_t* addr);
 
 // socket.c
-int create_icmp_socket(void);
+int create_icmp_socket(const t_preferences* prefs);
 
 // ping_pong.c
 int	ping_pong(t_ping* ping);
@@ -141,6 +184,9 @@ void	ip_convert_endian(void* mem);
 // icmp.c
 void		icmp_convert_endian(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
+
+// unexpected_icmp.c
+void	print_unexpected_icmp(t_acceptance* acceptance);
 
 // endian.c
 bool		is_little_endian(void);

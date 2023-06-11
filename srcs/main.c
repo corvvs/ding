@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
 	// [ソケット作成]
 	// ソケットは全宛先で使い回すので最初に生成する
-	ping.socket_fd = create_icmp_socket();
+	ping.socket_fd = create_icmp_socket(&ping.prefs);
 
 	for (; argc > 0; argc--, argv++) {
 		const char*	given_host = *argv;

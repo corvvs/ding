@@ -15,6 +15,7 @@ static int	should_continue_pinging(const t_ping* ping) {
 	}
 	// カウントが設定されている and 受信数がカウント以上に達した ->	No
 	if (ping->prefs.count > 0 && ping->stat_data.packets_received >= ping->prefs.count) {
+		DEBUGOUT("ping->prefs.count: %zu", ping->prefs.count);
 		return false;
 	}
 	// Yes!!
@@ -92,15 +93,15 @@ int	ping_pong(t_ping* ping) {
 				}
 			}
 			if (check_acceptance(ping, &acceptance, addr_to)) {
-				break;
+				continue;
 			}
 			const double triptime = mark_received(ping, &acceptance);
 			// [受信時出力]
 			printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 				acceptance.icmp_whole_len,
-				ping->target.resolved_host,
+				stringify_address(&acceptance.ip_header->IP_HEADER_SRC),
 				acceptance.icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-				acceptance.ip_header->ttl,
+				acceptance.ip_header->IP_HEADER_TTL,
 				triptime
 			);
 		}
