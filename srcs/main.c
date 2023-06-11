@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 	argv += 1;
 
 	// オプションの解析
-	t_preferences	pref = {0};
+	t_preferences	pref = default_preferences();
 	int parsed = parse_option(argc, argv, &pref);
 	if (parsed < 0) {
 		return 64;

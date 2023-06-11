@@ -7,3 +7,5 @@ RUN apt-get update && apt-get install -y\
     vim \
     git \
     inetutils-ping
+RUN apt-get install -y inetutils-traceroute
+RUN apt-get install -y iproute2
