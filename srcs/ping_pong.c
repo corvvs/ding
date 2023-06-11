@@ -98,9 +98,9 @@ int	ping_pong(t_ping* ping) {
 			// [受信時出力]
 			printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
 				acceptance.icmp_whole_len,
-				ping->target.resolved_host,
+				stringify_address(&acceptance.ip_header->IP_HEADER_SRC),
 				acceptance.icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-				acceptance.ip_header->ttl,
+				acceptance.ip_header->IP_HEADER_TTL,
 				triptime
 			);
 		}

@@ -25,12 +25,19 @@ static int	validate_received_ip(
 	const ip_header_t* received_ip_header,
 	const socket_address_in_t* addr_to
 ) {
-	// TODO: 受信サイズ == トータルサイズ であることを確認する
-	if (recv_size != received_ip_header->tot_len) {
+
+	// CHECK: バージョンが4であることを確認する
+	if (received_ip_header->IP_HEADER_VER != 4) {
+		DEBUGERR("received_ip_header->IP_HEADER_VER != 4: %u != 4", received_ip_header->IP_HEADER_VER);
+		return -1;
+	}
+
+	// CHECK: 受信サイズ == トータルサイズ であることを確認する
+	if (recv_size != received_ip_header->IP_HEADER_LEN) {
 		DEBUGERR("size doesn't match: rv: %zu, tot_len: %u", recv_size, received_ip_header->tot_len);
 		return -1;
 	}
-	const size_t	ip_header_len = received_ip_header->ihl * 4;
+	const size_t	ip_header_len = received_ip_header->IP_HEADER_HL * 4;
 	DEBUGOUT("ip_header_len: %zu", ip_header_len);
 	// CHECK: ip_header_len >= sizeof(ip_header_t)
 	if (recv_size < ip_header_len) {
@@ -40,19 +47,9 @@ static int	validate_received_ip(
 
 	// CHECK: IP: Reply の送信元 == Request の送信先
 	const uint32_t	address_request_to = SWAP_NEEDED(addr_to->sin_addr.s_addr);
-	const uint32_t	address_reply_from = received_ip_header->saddr;
-	DEBUGOUT("address_request_to: %u.%u.%u.%u",
-		(address_request_to >> 24) & 0xff,
-		(address_request_to >> 16) & 0xff,
-		(address_request_to >> 8) & 0xff,
-		(address_request_to >> 0) & 0xff
-	);
-	DEBUGOUT("address_reply_from: %u.%u.%u.%u",
-		(address_reply_from >> 24) & 0xff,
-		(address_reply_from >> 16) & 0xff,
-		(address_reply_from >> 8) & 0xff,
-		(address_reply_from >> 0) & 0xff
-	);
+	const uint32_t	address_reply_from = serialize_address(&received_ip_header->IP_HEADER_SRC);
+	DEBUGOUT("address_request_to: %s", stringify_serialized_address(address_request_to));
+	DEBUGOUT("address_reply_from: %s", stringify_address(&received_ip_header->IP_HEADER_SRC));
 	if (address_request_to != address_reply_from) {
 		DEBUGWARN("address_request_to != address_reply_from: %u != %u", address_request_to, address_reply_from);
 	}
@@ -95,6 +92,9 @@ static int	validate_received_icmp(
 	// CHECK: Type == 0?
 	if (received_icmp_header->ICMP_HEADER_TYPE != 0) {
 		DEBUGOUT("received_icmp_header->ICMP_HEADER_TYPE != 0: %u != 0", received_icmp_header->ICMP_HEADER_TYPE);
+
+		// 特定のTypeについてはフォローアップを行う
+		
 		return -1;
 	}
 
@@ -128,7 +128,7 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_addres
 		return 1;
 	}
 	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
-	const size_t		ip_header_len = acceptance->ip_header->ihl * 4;
+	const size_t		ip_header_len = acceptance->ip_header->IP_HEADER_HL * 4;
 	acceptance->icmp_whole_len = acceptance->received_len  - ip_header_len;
 	acceptance->icmp_header = (icmp_header_t*)(acceptance->recv_buffer + ip_header_len);
 	if (validate_received_icmp(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {

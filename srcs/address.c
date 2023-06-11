@@ -50,3 +50,26 @@ int	retrieve_target(const char* host, t_target* target) {
 	}
 	return 0;
 }
+
+uint32_t	serialize_address(const address_in_t* addr) {
+#ifdef __APPLE__
+	return addr->s_addr;
+#else
+	return *addr;
+#endif
+}
+
+const char*	stringify_serialized_address(uint32_t addr32) {
+	static char	buf[16];
+	sprintf(buf, "%u.%u.%u.%u",
+		(addr32 >> 24) & 0xff,
+		(addr32 >> 16) & 0xff,
+		(addr32 >> 8) & 0xff,
+		(addr32 >> 0) & 0xff
+	);
+	return buf;
+}
+
+const char*	stringify_address(const address_in_t* addr) {
+	return stringify_serialized_address(serialize_address(addr));
+}
