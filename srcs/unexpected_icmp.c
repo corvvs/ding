@@ -8,7 +8,7 @@ void	print_unexpected_icmp(t_acceptance* acceptance) {
 		case ICMP_ECHOREPLY:
 			break;
 		case ICMP_TIMXCEED: {
-
+			// TODO: Check Code == 0
 			icmp_detailed_header_t*	dicmp = (icmp_detailed_header_t*)icmp_header;
 			ip_header_t*			original_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
 			const size_t	original_ip_whole_len = icmp_whole_len - ((void*)original_ip - (void*)dicmp);
