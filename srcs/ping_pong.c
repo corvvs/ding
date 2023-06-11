@@ -43,13 +43,21 @@ int	ping_pong(t_ping* ping) {
 		.tv_usec = 0,
 	};
 	timeval_t	now = get_current_time();
-	timeval_t	last_request_sent = now;
 
 	// 受信タイムアウトしたかどうか
 	bool	receiving_timed_out = false;
 
 	// [送受信ループ]
 	uint16_t	sequence = 0;
+
+	// preload
+	for (size_t n = 0; n < ping->prefs.preload; n += 1, sequence += 1) {
+		if (send_request(ping, addr_to, sequence) < 0) {
+			break;
+		}
+	}
+	timeval_t	last_request_sent = get_current_time();
+
 	while (should_continue_pinging(ping)) {
 		if (ping->stat_data.packets_sent == 0 || receiving_timed_out) {
 			// [送信: Echo Request]

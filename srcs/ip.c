@@ -3,7 +3,7 @@ extern int	g_is_little_endian;
 
 static void	swap_address(void* mem) {
 #ifdef __APPLE__
-	address_in_t*	addr = (ip_header_t*)addr;
+	address_in_t*	addr = (address_in_t*)mem;
 	addr->s_addr = SWAP_NEEDED(addr->s_addr);
 #else
 	// NOTHING to do
