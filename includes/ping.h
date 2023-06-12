@@ -67,6 +67,8 @@ typedef struct s_stat_data {
 	size_t	rtts_cap;
 }	t_stat_data;
 
+#define MAX_DATA_PATTERN_LEN 16
+
 typedef struct s_preferences
 {
 	// verbose モード
@@ -81,6 +83,8 @@ typedef struct s_preferences
 	uint64_t	wait_after_final_request_s;
 	// pingセッションのタイムアウト時間(秒)
 	uint64_t	session_timeout_s;
+	// データパターン
+	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
 } t_preferences;
 
 // ターゲット構造体
