@@ -12,6 +12,7 @@
 #include <netinet/ip_icmp.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <errno.h>
 #include "libft.h"
@@ -85,6 +86,8 @@ typedef struct s_preferences
 	uint64_t	session_timeout_s;
 	// データパターン
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
+	// flood
+	bool		flood;
 } t_preferences;
 
 // ターゲット構造体
@@ -108,7 +111,7 @@ typedef struct s_ping
 } t_ping;
 
 // option.c
-int	parse_option(int argc, char** argv, t_preferences* pref);
+int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
 // address.c

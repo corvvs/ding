@@ -62,8 +62,11 @@ int	ping_pong(t_ping* ping) {
 	signal(SIGINT, sig_int);
 
 	// タイムアウトの計算
-	timeval_t	interval_request = {
-		.tv_sec = 1,
+	timeval_t	interval_request = ping->prefs.flood ? (timeval_t){
+		.tv_sec =  0,
+		.tv_usec = 10000,
+	} : (timeval_t){
+		.tv_sec =  1,
 		.tv_usec = 0,
 	};
 
