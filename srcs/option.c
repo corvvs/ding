@@ -138,7 +138,7 @@ int	parse_pattern(
 	argc -= 1;\
 	argv += 1
 
-int	parse_option(int argc, char** argv, t_preferences* pref) {
+int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 	int parsed = 0;
 	while (argc > 0) {
 		const char*	arg = *argv;
@@ -222,6 +222,16 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 					if (parse_pattern(*argv, pref->data_pattern, MAX_DATA_PATTERN_LEN)) {
 						return -1;
 					}
+					break;
+				}
+
+				// flood
+				case 'f': {
+					if (!by_root) {
+						DEBUGERR("%s", "ping: flood ping is not permitted");
+						return -1;
+					}
+					pref->flood = true;
 					break;
 				}
 

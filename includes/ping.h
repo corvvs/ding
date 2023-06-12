@@ -12,6 +12,7 @@
 #include <netinet/ip_icmp.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <errno.h>
 #include "libft.h"
@@ -28,6 +29,9 @@ typedef struct sockaddr_in	socket_address_in_t;
 
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
+
+#define PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
+#define PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
 
 typedef enum e_received_result {
 	RR_SUCCESS,
@@ -85,6 +89,8 @@ typedef struct s_preferences
 	uint64_t	session_timeout_s;
 	// データパターン
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
+	// flood
+	bool		flood;
 } t_preferences;
 
 // ターゲット構造体
@@ -108,7 +114,7 @@ typedef struct s_ping
 } t_ping;
 
 // option.c
-int	parse_option(int argc, char** argv, t_preferences* pref);
+int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
 // address.c

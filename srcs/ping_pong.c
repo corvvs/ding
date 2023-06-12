@@ -46,10 +46,7 @@ static bool	should_continue_pinging(const t_ping* ping, bool receiving_timed_out
 	return true;
 }
 
-// 1つの宛先に対して ping セッションを実行する
-int	ping_pong(t_ping* ping) {
-	const socket_address_in_t* addr_to = &ping->target.addr_to;
-	// [初期出力]
+static void	print_prologue(const t_ping* ping) {
 	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
 	printf("PING %s (%s): %zu data bytes",
 		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
@@ -57,15 +54,22 @@ int	ping_pong(t_ping* ping) {
 		printf(", id = 0x%04x", ping->icmp_header_id);
 	}
 	printf("\n");
+}
+
+// 1つの宛先に対して ping セッションを実行する
+int	ping_pong(t_ping* ping) {
+	const socket_address_in_t* addr_to = &ping->target.addr_to;
+	// [初期出力]
+	print_prologue(ping);
+
 	// [シグナルハンドラ設定]
 	g_interrupted = 0; // TODO: セッションごとにリセット**しない**
 	signal(SIGINT, sig_int);
 
 	// タイムアウトの計算
-	timeval_t	interval_request = {
-		.tv_sec = 1,
-		.tv_usec = 0,
-	};
+	const timeval_t	ping_interval = ping->prefs.flood
+		? PING_FLOOD_INTERVAL
+		: PING_DEFAULT_INTERVAL;
 
 	// 受信タイムアウトしたかどうか
 	bool	receiving_timed_out = false;
@@ -94,6 +98,9 @@ int	ping_pong(t_ping* ping) {
 			if (send_request(ping, addr_to, sequence) < 0) {
 				break;
 			}
+			if (ping->prefs.flood) {
+				ft_putchar_fd('.', STDOUT_FILENO);
+			}
 			last_request_sent = get_current_time();
 			sequence += 1;
 		} else {
@@ -104,7 +111,7 @@ int	ping_pong(t_ping* ping) {
 			now = get_current_time();
 			const timeval_t	elapsed_from_last_ping = sub_times(&now, &last_request_sent);
 			timeval_t	recv_timeout = sub_times(
-				reached_ping_limit(ping) ? &receiving_timeout : &interval_request,
+				reached_ping_limit(ping) ? &receiving_timeout : &ping_interval,
 				&elapsed_from_last_ping);
 			if (recv_timeout.tv_sec < 0 || recv_timeout.tv_usec < 0) {
 				DEBUGOUT("recv_timeout: %.3fms -> zeroize", get_ms(&recv_timeout));
@@ -141,13 +148,17 @@ int	ping_pong(t_ping* ping) {
 
 			// [受信時出力]
 			const double triptime = mark_received(ping, &acceptance);
-			printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
-				acceptance.icmp_whole_len,
-				stringify_address(&acceptance.ip_header->IP_HEADER_SRC),
-				acceptance.icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-				acceptance.ip_header->IP_HEADER_TTL,
-				triptime
-			);
+			if (ping->prefs.flood) {
+				ft_putchar_fd('\b', STDOUT_FILENO);
+			} else {
+				printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+					acceptance.icmp_whole_len,
+					stringify_address(&acceptance.ip_header->IP_HEADER_SRC),
+					acceptance.icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+					acceptance.ip_header->IP_HEADER_TTL,
+					triptime
+				);
+			}
 		}
 	}
 
