@@ -129,7 +129,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
 // address.c
-int	retrieve_target(const char* host, t_target* target);
+int			setup_target_from_host(const char* host, t_target* target);
 uint32_t	serialize_address(const address_in_t* addr);
 const char*	stringify_serialized_address(uint32_t addr32);
 const char*	stringify_address(const address_in_t* addr);
