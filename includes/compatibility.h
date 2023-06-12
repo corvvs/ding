@@ -31,6 +31,8 @@ typedef struct icmp icmp_detailed_header_t;
 #define ICMP_DHEADER_CHECKSUM icmp_cksum
 #define ICMP_DHEADER_ORIGINAL_IP icmp_dun.id_ip.idi_ip
 
+#define U64T "%llu"
+
 #else
 
 typedef struct iphdr ip_header_t;
@@ -60,6 +62,8 @@ typedef struct icmp icmp_detailed_header_t;
 #define ICMP_DHEADER_CODE icmp_code
 #define ICMP_DHEADER_CHECKSUM icmp_cksum
 #define ICMP_DHEADER_ORIGINAL_IP icmp_dun.id_ip.idi_ip
+
+#define U64T "%lu"
 
 #endif
 

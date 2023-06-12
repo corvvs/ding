@@ -38,7 +38,7 @@ static bool	should_continue_pinging(const t_ping* ping, bool receiving_timed_out
 		timeval_t	t = get_current_time();
 		t = sub_times(&t, &ping->start_time);
 		if (ping->prefs.session_timeout_s * 1000.0 < get_ms(&t)) {
-			DEBUGWARN("session timeout reached: %lu", ping->prefs.session_timeout_s);
+			DEBUGWARN("session timeout reached: " U64T, ping->prefs.session_timeout_s);
 			return false;
 		}
 	}
