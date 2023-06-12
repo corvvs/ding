@@ -46,6 +46,7 @@ int main(int argc, char **argv) {
 
 	for (; argc > 0; argc--, argv++) {
 		const char*	given_host = *argv;
+		ping.target.stat_data = (t_stat_data){};
 		DEBUGOUT("<start session for \"%s\">", given_host);
 		// [アドレス変換]
 		if (retrieve_target(given_host, &ping.target)) {
@@ -53,10 +54,9 @@ int main(int argc, char **argv) {
 		}
 
 		// [エコー送信]
-		ping.stat_data = (t_stat_data){};
 		ping_pong(&ping);
 
 		// [宛先単位の後処理]
-		free(ping.stat_data.rtts);
+		free(ping.target.stat_data.rtts);
 	};
 }

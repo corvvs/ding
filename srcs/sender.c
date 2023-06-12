@@ -77,6 +77,6 @@ int	send_request(
 		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
 		return rv;
 	}
-	ping->stat_data.packets_sent += 1;
+	ping->target.stat_data.packets_sent += 1;
 	return rv;
 }

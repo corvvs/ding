@@ -96,21 +96,32 @@ typedef struct s_preferences
 // ターゲット構造体
 typedef struct s_target
 {
-	const char*				given_host;
-	char					resolved_host[16];
-	socket_address_in_t		addr_to;
+	// 入力ホスト
+	const char*			given_host;
+	// 入力ホストの解決後IPアドレス文字列
+	char				resolved_host[16];
+	// IPアドレス構造体
+	socket_address_in_t	addr_to;
+	// 送受信統計
+	t_stat_data			stat_data;
 } t_target;
 
 // マスター構造体
 typedef struct s_ping
 {
-	t_target		target;
+	// 宛先によらないパラメータ
 
-	uint16_t		icmp_header_id;
+	// 送信ソケット
 	int				socket_fd;
-	t_stat_data		stat_data;
+	// pingのID
+	uint16_t		icmp_header_id;
+	// ping開始時刻
 	timeval_t		start_time;
+	// 設定
 	t_preferences	prefs;
+
+	// 宛先に依存するパラメータ
+	t_target		target;
 } t_ping;
 
 // option.c

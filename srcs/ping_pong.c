@@ -9,11 +9,11 @@ void	sig_int(int signal) {
 }
 
 static bool	reached_ping_limit(const t_ping* ping) {
-	return ping->prefs.count > 0 && ping->stat_data.packets_sent >= ping->prefs.count;
+	return ping->prefs.count > 0 && ping->target.stat_data.packets_sent >= ping->prefs.count;
 }
 
 static bool	reached_pong_limit(const t_ping* ping) {
-	return ping->prefs.count > 0 && ping->stat_data.packets_received >= ping->prefs.count;
+	return ping->prefs.count > 0 && ping->target.stat_data.packets_received >= ping->prefs.count;
 }
 
 static bool	should_continue_pinging(const t_ping* ping, bool receiving_timed_out) {
@@ -23,7 +23,10 @@ static bool	should_continue_pinging(const t_ping* ping, bool receiving_timed_out
 		return false;
 	}
 	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, timed_out: %d",
-		ping->prefs.count, ping->stat_data.packets_sent, ping->stat_data.packets_received, receiving_timed_out);
+		ping->prefs.count,
+		ping->target.stat_data.packets_sent,
+		ping->target.stat_data.packets_received,
+		receiving_timed_out);
 	// カウントが設定されている and 受信数がカウント以上に達した and タイムアウトした
 	if (reached_ping_limit(ping) && receiving_timed_out) {
 		DEBUGWARN("ping limit reached: %zu", ping->prefs.count);
@@ -92,7 +95,7 @@ int	ping_pong(t_ping* ping) {
 	};
 
 	while (should_continue_pinging(ping, receiving_timed_out)) {
-		if (ping->stat_data.packets_sent == 0 || (!reached_ping_limit(ping) && receiving_timed_out)) {
+		if (ping->target.stat_data.packets_sent == 0 || (!reached_ping_limit(ping) && receiving_timed_out)) {
 			// [送信: Echo Request]
 			receiving_timed_out = false;
 			if (send_request(ping, addr_to, sequence) < 0) {
