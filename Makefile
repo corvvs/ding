@@ -17,6 +17,7 @@ FILES	:=	\
 			time.c\
 			stats.c\
 			math.c\
+			error.c\
 			debug.c\
 
 SRCS	:=	$(FILES:%.c=$(SRCDIR)/%.c)

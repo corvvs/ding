@@ -18,8 +18,9 @@
 #include "libft.h"
 #include "common.h"
 
-#define ICMP_ECHO_REQUEST 8
-#define ICMP_ECHO_REPLY 0
+#define PROGRAM_NAME		"ping"
+#define ICMP_ECHO_REQUEST	8
+#define ICMP_ECHO_REPLY		0
 
 typedef struct timeval		timeval_t;
 typedef struct addrinfo		address_info_t;
@@ -182,6 +183,11 @@ void	print_stats(const t_ping* ping);
 // math.c
 double	ft_square(double x);
 double	ft_sqrt(double x);
+
+// error.c
+void	print_error_by_message(const char* message);
+void	print_error_by_errno(void);
+void	print_special_error_by_errno(const char* name);
 
 // debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);

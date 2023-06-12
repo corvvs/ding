@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
 	argv += parsed_options;
 
 	if (argc < 1) {
-		printf("ping: missing host operand\n");
+		print_error_by_message("missing host operand");
 		return 64; // なぜ 64 なのか...
 	}
 
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 	ping.socket_fd = create_icmp_socket(&ping.prefs);
 	// ソケット作成後, もしルート権限で実行されていたら, その権限を放棄する
 	if (setuid(getuid())) { // ← 実ユーザIDがルートでないなら, これでルート権限が外れる
-		perror("setuid");
+		print_special_error_by_errno("setuid");
 		return 1;
 	}
 

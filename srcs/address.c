@@ -6,7 +6,7 @@ static int	resolve_host(const char* given_str, char* resolved_str, size_t resolv
 	};
 	address_info_t*	res;
 	if (getaddrinfo(given_str, NULL, &hints, &res)) {
-		printf("ping: unknown host\n");
+		print_error_by_message("unknown host");
 		return -1;
 	}
 	DEBUGWARN("ai_family: %d", res->ai_family);
@@ -25,7 +25,7 @@ static int	resolve_host(const char* given_str, char* resolved_str, size_t resolv
 	freeaddrinfo(res);
 	if (red == NULL) {
 		DEBUGERR("inet_ntop failed: %d(%s)", errno, strerror(errno));
-		printf("ping: unknown host\n");
+		print_error_by_message("unknown host");
 		return -1;
 	}
 	DEBUGWARN("given:    %s", given_str);
