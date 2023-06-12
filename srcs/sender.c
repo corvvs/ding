@@ -39,9 +39,17 @@ static void	deploy_datagram(
 
 	// データフィールドをASCIIで埋める
 	// TODO: 全体で共通化
-	// TODO: パターンが与えられた場合はパターンを使う
-	for (size_t i = data_offset, j = 0; i < ICMP_ECHO_DATA_SIZE; i++, j++) {
-		icmp_dt[i] = j;
+	if (*(ping->prefs.data_pattern)) {
+		for (size_t i = data_offset, j = 0; i < ICMP_ECHO_DATA_SIZE; i++, j++) {
+			if (!ping->prefs.data_pattern[j]) {
+				j = 0;
+			}
+			icmp_dt[i] = ping->prefs.data_pattern[j];
+		}
+	} else {
+		for (size_t i = data_offset, j = 0; i < ICMP_ECHO_DATA_SIZE; i++, j++) {
+			icmp_dt[i] = j;
+		}
 	}
 
 	// 最後にチェックサム計算

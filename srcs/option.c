@@ -60,7 +60,12 @@ size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	return negative ? -ans : ans;
 }
 
-int parse_number(const char* str, unsigned long* out, unsigned long max, unsigned long min) {
+int parse_number(
+	const char* str,
+	unsigned long* out,
+	unsigned long max,
+	unsigned long min
+) {
 	char*		err;
 	unsigned long rv = ft_strtoul(str, &err, 0);
 	if (*err) {
@@ -76,6 +81,49 @@ int parse_number(const char* str, unsigned long* out, unsigned long max, unsigne
 		return -1;
 	}
 	*out = rv;
+	return 0;
+}
+
+int	chtox(char c) {
+	c = ft_tolower(c);
+	if ('0' <= c && c <= '9') {
+		return c - '0';
+	}
+	if ('a' <= c && c <= 'f') {
+		return c - 'a' + 10;
+	}
+	return -1;
+}
+
+int	parse_pattern(
+	const char* str,
+	char* buffer,
+	size_t max_len
+) {
+	for (size_t i = 0, j = 0; str[i];) {
+		if (max_len <= j) {
+			DEBUGERR("pattern too long: %s", str);
+			return -1;
+		}
+		int	x = chtox(str[i]);
+		if (x < 0) {
+			DEBUGERR("ping: error in pattern near %c", str[i]);
+			return -1;
+		}
+		i += 1;
+		uint8_t n = x;
+		if (str[i]) {
+			x = chtox(str[i]);
+			if (x < 0) {
+				DEBUGERR("ping: error in pattern near %c", str[i]);
+				return -1;
+			}
+			i += 1;
+			n = (n * 16) + x;
+		}
+		DEBUGOUT("buffer[%zu] = %02x", j, n);
+		buffer[j++] = n;
+	}
 	return 0;
 }
 
@@ -163,6 +211,15 @@ int	parse_option(int argc, char** argv, t_preferences* pref) {
 						return -1;
 					}
 					pref->wait_after_final_request_s = rv;
+					break;
+				}
+
+				// データパターン
+				case 'p': {
+					PICK_ONE_ARG;
+					if (parse_pattern(*argv, pref->data_pattern, MAX_DATA_PATTERN_LEN)) {
+						return -1;
+					}
 					break;
 				}
 
