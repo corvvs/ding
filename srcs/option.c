@@ -100,7 +100,8 @@ int	parse_pattern(
 	char* buffer,
 	size_t max_len
 ) {
-	for (size_t i = 0, j = 0; str[i];) {
+	size_t i = 0, j = 0;
+	for (; str[i];) {
 		if (max_len <= j) {
 			DEBUGERR("pattern too long: %s", str);
 			return -1;
@@ -124,6 +125,7 @@ int	parse_pattern(
 		DEBUGOUT("buffer[%zu] = %02x", j, n);
 		buffer[j++] = n;
 	}
+	buffer[j] = '\0';
 	return 0;
 }
 
