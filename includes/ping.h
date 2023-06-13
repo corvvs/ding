@@ -127,10 +127,10 @@ typedef struct s_ping
 } t_ping;
 
 // option.c
-int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
+int				parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
-// address.c
+// host_address.c
 int			setup_target_from_host(const char* host, t_target* target);
 uint32_t	serialize_address(const address_in_t* addr);
 const char*	stringify_serialized_address(uint32_t addr32);
@@ -142,19 +142,19 @@ int create_icmp_socket(const t_preferences* prefs);
 // ping_pong.c
 int	ping_pong(t_ping* ping);
 
-// sender.c
+// ping_sender.c
 int	send_request(t_ping* ping, uint16_t sequence);
 
-// receiver.c
+// pong_receiver.c
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
-// ip.c
-void	flip_endian_ip(void* mem);
+// protocol_ip.c
+void		flip_endian_ip(void* mem);
 
-// icmp.c
+// protocol_icmp.c
 void		flip_endian_icmp(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
-void	construct_icmp_datagram(
+void		construct_icmp_datagram(
 	const t_ping* ping,
 	uint8_t* datagram_buffer,
 	size_t datagram_len,
@@ -164,36 +164,36 @@ void	construct_icmp_datagram(
 // unexpected_icmp.c
 void	print_unexpected_icmp(t_acceptance* acceptance);
 
-// endian.c
+// validator.c
+int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
+
+// stats.c
+double	mark_received(t_ping* ping, const t_acceptance* acceptance);
+void	print_stats(const t_ping* ping);
+
+// utils_math.c
+double	ft_square(double x);
+double	ft_sqrt(double x);
+
+// utils_endian.c
 bool		is_little_endian(void);
 uint16_t	swap_2byte(uint16_t value);
 uint32_t	swap_4byte(uint32_t value);
 uint64_t	swap_8byte(uint64_t value);
 
-// validator.c
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
-
-// time.c
+// utils_time.c
 timeval_t	get_current_time(void);
 timeval_t	add_times(const timeval_t* a, const timeval_t* b);
 timeval_t	sub_times(const timeval_t* a, const timeval_t* b);
 double		get_ms(const timeval_t* a);
 double		diff_times(const timeval_t* a, const timeval_t* b);
 
-// stats.c
-double	mark_received(t_ping* ping, const t_acceptance* acceptance);
-void	print_stats(const t_ping* ping);
-
-// math.c
-double	ft_square(double x);
-double	ft_sqrt(double x);
-
-// error.c
+// utils_error.c
 void	print_error_by_message(const char* message);
 void	print_error_by_errno(void);
 void	print_special_error_by_errno(const char* name);
 
-// debug.c
+// utils_debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);
 void	debug_msg_flags(const struct msghdr* msg);
 void	debug_ip_header(const void* mem);

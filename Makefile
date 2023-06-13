@@ -4,21 +4,21 @@ INCDIR	:=	includes
 FILES	:=	\
 			main.c\
 			option.c\
-			address.c\
+			host_address.c\
 			socket.c\
 			ping_pong.c\
-			sender.c\
-			receiver.c\
-			ip.c\
-			icmp.c\
+			ping_sender.c\
+			pong_receiver.c\
+			protocol_ip.c\
+			protocol_icmp.c\
 			unexpected_icmp.c\
-			endian.c\
 			validator.c\
-			time.c\
 			stats.c\
-			math.c\
-			error.c\
-			debug.c\
+			utils_math.c\
+			utils_endian.c\
+			utils_time.c\
+			utils_error.c\
+			utils_debug.c\
 
 SRCS	:=	$(FILES:%.c=$(SRCDIR)/%.c)
 OBJS	:=	$(FILES:%.c=$(OBJDIR)/%.o)
