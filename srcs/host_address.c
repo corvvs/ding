@@ -1,15 +1,12 @@
 #include "ping.h"
 
-static int	resolve_host(t_target* target) {
-	address_info_t	hints;
+static int	resolve_host(const char* given_str, char* resolved_str, size_t resolved_max_len) {
+	address_info_t	hints = {
+		.ai_family = AF_INET, .ai_socktype = SOCK_STREAM,
+	};
 	address_info_t*	res;
-	ft_memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	int status = getaddrinfo(target->given_host, NULL, &hints, &res);
-	DEBUGWARN("status: %d", status);
-	if (status < 0) {
-		printf("ping: unknown host\n");
+	if (getaddrinfo(given_str, NULL, &hints, &res)) {
+		print_error_by_message("unknown host");
 		return -1;
 	}
 	DEBUGWARN("ai_family: %d", res->ai_family);
@@ -19,29 +16,30 @@ static int	resolve_host(t_target* target) {
 		freeaddrinfo(res);
 		return -1;
 	}
-	const void*	resolved = inet_ntop(
+	const void*	red = inet_ntop(
 		res->ai_family,
 		&((socket_address_in_t *)res->ai_addr)->sin_addr,
-		target->resolved_host,
-		sizeof(target->resolved_host)
+		resolved_str,
+		resolved_max_len
 	);
 	freeaddrinfo(res);
-	if (resolved == NULL) {
+	if (red == NULL) {
 		DEBUGERR("inet_ntop failed: %d(%s)", errno, strerror(errno));
-		printf("ping: unknown host\n");
+		print_error_by_message("unknown host");
 		return -1;
 	}
-	DEBUGWARN("given:    %s", target->given_host);
-	DEBUGWARN("resolved: %s", target->resolved_host);
+	DEBUGWARN("given:    %s", given_str);
+	DEBUGWARN("resolved: %s", resolved_str);
 	return 0;
 }
 
-// 与えられた宛先から sockaddr_in を生成する
-int	retrieve_target(const char* host, t_target* target) {
+int	setup_target_from_host(const char* host, t_target* target) {
+	// 与えられたホストをIPアドレス文字列に変換する
 	target->given_host = host;
-	if (resolve_host(target)) {
+	if (resolve_host(target->given_host, target->resolved_host, sizeof(target->resolved_host))) {
 		return -1;
 	}
+	// IPアドレス文字列をアドレス構造体に変換する
 	socket_address_in_t* addr = &target->addr_to;
 	addr->sin_family = AF_INET;
 	if (inet_pton(AF_INET, target->resolved_host, &addr->sin_addr) != 1) {

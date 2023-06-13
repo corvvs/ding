@@ -13,7 +13,7 @@ static void	swap_address(void* mem) {
 }
 
 // mem をIPヘッダとして, 必要ならエンディアン変換を行う
-void	ip_convert_endian(void* mem) {
+void	flip_endian_ip(void* mem) {
 	if (!g_is_little_endian) { return; }
 
 	ip_header_t*	ip_hd = (ip_header_t*)mem;

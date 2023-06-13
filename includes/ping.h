@@ -18,8 +18,9 @@
 #include "libft.h"
 #include "common.h"
 
-#define ICMP_ECHO_REQUEST 8
-#define ICMP_ECHO_REPLY 0
+#define PROGRAM_NAME		"ping"
+#define ICMP_ECHO_REQUEST	8
+#define ICMP_ECHO_REPLY		0
 
 typedef struct timeval		timeval_t;
 typedef struct addrinfo		address_info_t;
@@ -30,8 +31,9 @@ typedef struct sockaddr_in	socket_address_in_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
-#define PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
-#define PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
+#define TV_PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
+#define TV_PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
+#define TV_NEARLY_ZERO				(timeval_t){ .tv_sec = 0, .tv_usec = 1000 }
 
 typedef enum e_received_result {
 	RR_SUCCESS,
@@ -96,29 +98,40 @@ typedef struct s_preferences
 // ターゲット構造体
 typedef struct s_target
 {
-	const char*				given_host;
-	char					resolved_host[16];
-	socket_address_in_t		addr_to;
+	// 入力ホスト
+	const char*			given_host;
+	// 入力ホストの解決後IPアドレス文字列
+	char				resolved_host[16];
+	// IPアドレス構造体
+	socket_address_in_t	addr_to;
+	// 送受信統計
+	t_stat_data			stat_data;
 } t_target;
 
 // マスター構造体
 typedef struct s_ping
 {
-	t_target		target;
+	// 宛先によらないパラメータ
 
-	uint16_t		icmp_header_id;
+	// 送信ソケット
 	int				socket_fd;
-	t_stat_data		stat_data;
+	// pingのID
+	uint16_t		icmp_header_id;
+	// ping開始時刻
 	timeval_t		start_time;
+	// 設定
 	t_preferences	prefs;
+
+	// 宛先に依存するパラメータ
+	t_target		target;
 } t_ping;
 
 // option.c
-int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
+int				parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
-// address.c
-int	retrieve_target(const char* host, t_target* target);
+// host_address.c
+int			setup_target_from_host(const char* host, t_target* target);
 uint32_t	serialize_address(const address_in_t* addr);
 const char*	stringify_serialized_address(uint32_t addr32);
 const char*	stringify_address(const address_in_t* addr);
@@ -129,50 +142,58 @@ int create_icmp_socket(const t_preferences* prefs);
 // ping_pong.c
 int	ping_pong(t_ping* ping);
 
-// sender.c
-int	send_request(
-	t_ping* ping,
-	const socket_address_in_t* addr,
-	uint16_t sequence
-);
+// ping_sender.c
+int	send_request(t_ping* ping, uint16_t sequence);
 
-// receiver.c
+// pong_receiver.c
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
-// ip.c
-void	ip_convert_endian(void* mem);
+// protocol_ip.c
+void		flip_endian_ip(void* mem);
 
-// icmp.c
-void		icmp_convert_endian(void* mem);
+// protocol_icmp.c
+void		flip_endian_icmp(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
+void		construct_icmp_datagram(
+	const t_ping* ping,
+	uint8_t* datagram_buffer,
+	size_t datagram_len,
+	uint16_t sequence
+);
 
 // unexpected_icmp.c
 void	print_unexpected_icmp(t_acceptance* acceptance);
 
-// endian.c
-bool		is_little_endian(void);
-uint16_t	swap_2byte(uint16_t value);
-uint32_t	swap_4byte(uint32_t value);
-uint64_t	swap_8byte(uint64_t value);
-
 // validator.c
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_address_in_t* addr_to);
-
-// time.c
-timeval_t	get_current_time(void);
-timeval_t	add_times(const timeval_t* a, const timeval_t* b);
-timeval_t	sub_times(const timeval_t* a, const timeval_t* b);
-double		get_ms(const timeval_t* a);
+int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);
 void	print_stats(const t_ping* ping);
 
-// math.c
+// utils_math.c
 double	ft_square(double x);
 double	ft_sqrt(double x);
 
-// debug.c
+// utils_endian.c
+bool		is_little_endian(void);
+uint16_t	swap_2byte(uint16_t value);
+uint32_t	swap_4byte(uint32_t value);
+uint64_t	swap_8byte(uint64_t value);
+
+// utils_time.c
+timeval_t	get_current_time(void);
+timeval_t	add_times(const timeval_t* a, const timeval_t* b);
+timeval_t	sub_times(const timeval_t* a, const timeval_t* b);
+double		get_ms(const timeval_t* a);
+double		diff_times(const timeval_t* a, const timeval_t* b);
+
+// utils_error.c
+void	print_error_by_message(const char* message);
+void	print_error_by_errno(void);
+void	print_special_error_by_errno(const char* name);
+
+// utils_debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);
 void	debug_msg_flags(const struct msghdr* msg);
 void	debug_ip_header(const void* mem);

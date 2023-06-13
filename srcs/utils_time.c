@@ -38,3 +38,7 @@ timeval_t	sub_times(const timeval_t* a, const timeval_t* b) {
 double	get_ms(const timeval_t* a) {
 	return a->tv_sec * 1000.0 + a->tv_usec / 1000.0;
 }
+
+double	diff_times(const timeval_t* a, const timeval_t* b) {
+	return (a->tv_sec - b->tv_sec) * 1000.0 + (a->tv_usec - b->tv_usec) / 1000.0;
+}

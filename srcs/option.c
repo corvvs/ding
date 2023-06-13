@@ -69,15 +69,15 @@ int parse_number(
 	char*		err;
 	unsigned long rv = ft_strtoul(str, &err, 0);
 	if (*err) {
-		DEBUGERR("invalid value (`%s' near `%s')", str, err);
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": invalid value (`%s' near `%s')", str, err);
 		return -1;
 	}
 	if (rv > max) {
-		DEBUGERR("option value too big: %s", str);
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": option value too big: %s", str);
 		return -1;
 	}
 	if (rv < min) {
-		DEBUGERR("option value too small: %s", str);
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": option value too small: %s", str);
 		return -1;
 	}
 	*out = rv;
@@ -103,12 +103,12 @@ int	parse_pattern(
 	size_t i = 0, j = 0;
 	for (; str[i];) {
 		if (max_len <= j) {
-			DEBUGERR("pattern too long: %s", str);
+			dprintf(STDERR_FILENO, PROGRAM_NAME ": pattern too long: %s\n", str);
 			return -1;
 		}
 		int	x = chtox(str[i]);
 		if (x < 0) {
-			DEBUGERR("ping: error in pattern near %c", str[i]);
+			dprintf(STDERR_FILENO, PROGRAM_NAME ": error in pattern near %c\n", str[i]);
 			return -1;
 		}
 		i += 1;
@@ -116,13 +116,12 @@ int	parse_pattern(
 		if (str[i]) {
 			x = chtox(str[i]);
 			if (x < 0) {
-				DEBUGERR("ping: error in pattern near %c", str[i]);
+				dprintf(STDERR_FILENO, PROGRAM_NAME ": error in pattern near %c\n", str[i]);
 				return -1;
 			}
 			i += 1;
 			n = (n * 16) + x;
 		}
-		DEBUGOUT("buffer[%zu] = %02x", j, n);
 		buffer[j++] = n;
 	}
 	buffer[j] = '\0';
@@ -131,7 +130,7 @@ int	parse_pattern(
 
 #define PICK_ONE_ARG \
 	if (argc < 2) {\
-		DEBUGERR("ping: option requires an argument -- '%c'", *arg);\
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": option requires an argument -- '%c'\n", *arg);\
 		return -1;\
 	}\
 	parsed += 1;\
@@ -152,9 +151,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 			break;
 		}
 		// arg はおそらくオプションなので解析する
-		DEBUGOUT("parsing: %s", arg);
 		while (*++arg) {
-			DEBUGOUT("*arg = %c(%d)", *arg, *arg);
 			switch (*arg) {
 				// verbose
 				case 'v':
@@ -228,7 +225,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 				// flood
 				case 'f': {
 					if (!by_root) {
-						DEBUGERR("%s", "ping: flood ping is not permitted");
+						print_error_by_message("flood ping is not permitted");
 						return -1;
 					}
 					pref->flood = true;
@@ -237,7 +234,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 
 				default:
 					// 未知のオプション
-					DEBUGERR("ping: invalid option -- '%c'", *arg);
+					dprintf(STDERR_FILENO, "invalid option -- '%c'\n", *arg);
 					return -1;
 			}
 		}

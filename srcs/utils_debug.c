@@ -20,33 +20,23 @@ void	debug_msg_flags(const struct msghdr* msg) {
 	DEBUGINFO("MSG_TRUNC: %d",    !!(msg->msg_flags & MSG_TRUNC)); // データグラムを受信しきれなかった
 	DEBUGINFO("MSG_CTRUNC: %d",   !!(msg->msg_flags & MSG_CTRUNC)); // 補助データが受信しきれなかった
 	DEBUGINFO("MSG_OOB: %d",      !!(msg->msg_flags & MSG_OOB)); // 対域外データを受信した
-	DEBUGINFO("MSG_ERRQUEUE: %d", !!(msg->msg_flags & MSG_ERRQUEUE)); // ソケットのエラーキューからエラーを受信した
+	// DEBUGINFO("MSG_ERRQUEUE: %d", !!(msg->msg_flags & MSG_ERRQUEUE)); // ソケットのエラーキューからエラーを受信した
 }
 
 void	debug_ip_header(const void* mem) {
 	const ip_header_t*	ip_hd = (const ip_header_t*) mem;
 	dprintf(STDERR_FILENO, "ip_header_t:\n");
-	dprintf(STDERR_FILENO, "  ip_v: %u\n", ip_hd->version);
-	dprintf(STDERR_FILENO, "  ip_hl: %u\n", ip_hd->ihl);
-	dprintf(STDERR_FILENO, "  ip_tos: %u\n", ip_hd->tos);
-	dprintf(STDERR_FILENO, "  ip_len: %u(%X)\n", ip_hd->tot_len, ip_hd->tot_len);
-	dprintf(STDERR_FILENO, "  ip_id: %u\n", ip_hd->id);
-	dprintf(STDERR_FILENO, "  ip_off: %u\n", ip_hd->frag_off);
-	dprintf(STDERR_FILENO, "  ip_ttl: %u\n", ip_hd->ttl);
-	dprintf(STDERR_FILENO, "  ip_p: %u\n", ip_hd->protocol);
-	dprintf(STDERR_FILENO, "  ip_sum: %u(%X)\n", ip_hd->check, ip_hd->check);
-	dprintf(STDERR_FILENO, "  ip_src: %u.%u.%u.%u\n",
-		(ip_hd->saddr >> 24) & 0xff,
-		(ip_hd->saddr >> 16) & 0xff,
-		(ip_hd->saddr >> 8) & 0xff,
-		(ip_hd->saddr >> 0) & 0xff
-	);
-	dprintf(STDERR_FILENO, "  ip_dst: %u.%u.%u.%u\n",
-		(ip_hd->daddr >> 24) & 0xff,
-		(ip_hd->daddr >> 16) & 0xff,
-		(ip_hd->daddr >> 8) & 0xff,
-		(ip_hd->daddr >> 0) & 0xff
-	);
+	dprintf(STDERR_FILENO, "  ip_v: %u\n", ip_hd->IP_HEADER_VER);
+	dprintf(STDERR_FILENO, "  ip_hl: %u(-> %u)\n", ip_hd->IP_HEADER_HL, ip_hd->IP_HEADER_HL * 4);
+	dprintf(STDERR_FILENO, "  ip_tos: %u(%X)\n", ip_hd->IP_HEADER_TOS, ip_hd->IP_HEADER_TOS);
+	dprintf(STDERR_FILENO, "  ip_len: %u(%X)\n", ip_hd->IP_HEADER_LEN, ip_hd->IP_HEADER_LEN);
+	dprintf(STDERR_FILENO, "  ip_id: %u\n", ip_hd->IP_HEADER_ID);
+	dprintf(STDERR_FILENO, "  ip_off: %u\n", ip_hd->IP_HEADER_OFF);
+	dprintf(STDERR_FILENO, "  ip_ttl: %u\n", ip_hd->IP_HEADER_TTL);
+	dprintf(STDERR_FILENO, "  ip_p: %u\n", ip_hd->IP_HEADER_PROT);
+	dprintf(STDERR_FILENO, "  ip_sum: %u(%X)\n", ip_hd->IP_HEADER_SUM, ip_hd->IP_HEADER_SUM);
+	dprintf(STDERR_FILENO, "  ip_src: %s\n", stringify_address(&ip_hd->IP_HEADER_SRC));
+	dprintf(STDERR_FILENO, "  ip_dst: %s\n", stringify_address(&ip_hd->IP_HEADER_DST));
 }
 
 void	debug_icmp_header(const void* mem) {
