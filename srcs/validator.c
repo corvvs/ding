@@ -126,12 +126,13 @@ static int	validate_received_icmp_echo_reply(
 	return 0;
 }
 
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_address_in_t* addr_to) {
+int	check_acceptance(t_ping* ping, t_acceptance* acceptance) {
+	const socket_address_in_t* addr_to = &ping->target.addr_to;
 	// debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
 	if (validate_received_raw_data(acceptance->received_len)) {
 		return 1;
 	}
-	ip_convert_endian(acceptance->recv_buffer);
+	flip_endian_ip(acceptance->recv_buffer);
 	// debug_ip_header(acceptance->recv_buffer);
 	if (validate_received_ip_preliminary(acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
 		return 1;
@@ -149,7 +150,7 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_addres
 	if (validate_received_icmp_echo_reply(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
 		return 1;
 	}
-	icmp_convert_endian(acceptance->icmp_header);
+	flip_endian_icmp(acceptance->icmp_header);
 	// debug_icmp_header(acceptance->icmp_header);
 	return 0;
 }

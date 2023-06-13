@@ -31,8 +31,9 @@ typedef struct sockaddr_in	socket_address_in_t;
 #define ICMP_ECHO_DATAGRAM_SIZE 64
 #define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
 
-#define PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
-#define PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
+#define TV_PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
+#define TV_PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
+#define TV_NEARLY_ZERO				(timeval_t){ .tv_sec = 0, .tv_usec = 1000 }
 
 typedef enum e_received_result {
 	RR_SUCCESS,
@@ -142,21 +143,23 @@ int create_icmp_socket(const t_preferences* prefs);
 int	ping_pong(t_ping* ping);
 
 // sender.c
-int	send_request(
-	t_ping* ping,
-	const socket_address_in_t* addr,
-	uint16_t sequence
-);
+int	send_request(t_ping* ping, uint16_t sequence);
 
 // receiver.c
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // ip.c
-void	ip_convert_endian(void* mem);
+void	flip_endian_ip(void* mem);
 
 // icmp.c
-void		icmp_convert_endian(void* mem);
+void		flip_endian_icmp(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
+void	construct_icmp_datagram(
+	const t_ping* ping,
+	uint8_t* datagram_buffer,
+	size_t datagram_len,
+	uint16_t sequence
+);
 
 // unexpected_icmp.c
 void	print_unexpected_icmp(t_acceptance* acceptance);
@@ -168,13 +171,14 @@ uint32_t	swap_4byte(uint32_t value);
 uint64_t	swap_8byte(uint64_t value);
 
 // validator.c
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance, const socket_address_in_t* addr_to);
+int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
 
 // time.c
 timeval_t	get_current_time(void);
 timeval_t	add_times(const timeval_t* a, const timeval_t* b);
 timeval_t	sub_times(const timeval_t* a, const timeval_t* b);
 double		get_ms(const timeval_t* a);
+double		diff_times(const timeval_t* a, const timeval_t* b);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);

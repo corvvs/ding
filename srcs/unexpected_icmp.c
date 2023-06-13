@@ -14,8 +14,8 @@ void	print_unexpected_icmp(t_acceptance* acceptance) {
 			const size_t	original_ip_whole_len = icmp_whole_len - ((void*)original_ip - (void*)dicmp);
 			const size_t	original_ip_header_len = original_ip->IP_HEADER_HL * 4;
 			icmp_header_t*	original_icmp = (icmp_header_t*)((void*)original_ip + original_ip_header_len);
-			ip_convert_endian(original_ip);
-			icmp_convert_endian(original_icmp);
+			flip_endian_ip(original_ip);
+			flip_endian_icmp(original_icmp);
 			// TODO: チェックサム
 			debug_ip_header(original_ip);
 			debug_icmp_header(original_icmp);
