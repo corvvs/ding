@@ -93,6 +93,8 @@ typedef struct s_preferences
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
 	// flood
 	bool		flood;
+	// ユーザ指定送信元アドレス
+	char*		given_source_address;
 } t_preferences;
 
 // ターゲット構造体
@@ -131,10 +133,11 @@ int				parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
 // host_address.c
-int			setup_target_from_host(const char* host, t_target* target);
-uint32_t	serialize_address(const address_in_t* addr);
-const char*	stringify_serialized_address(uint32_t addr32);
-const char*	stringify_address(const address_in_t* addr);
+address_info_t*	resolve_str_into_address(const char* host_str);
+int				setup_target_from_host(const char* host, t_target* target);
+uint32_t		serialize_address(const address_in_t* addr);
+const char*		stringify_serialized_address(uint32_t addr32);
+const char*		stringify_address(const address_in_t* addr);
 
 // socket.c
 int create_icmp_socket(const t_preferences* prefs);

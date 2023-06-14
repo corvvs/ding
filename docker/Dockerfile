@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y\
     gdb \
     vim \
     git \
+    iproute2\
+    tcpdump\
+    inetutils-traceroute\
     inetutils-ping
-RUN apt-get install -y inetutils-traceroute
-RUN apt-get install -y iproute2

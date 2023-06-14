@@ -58,4 +58,5 @@ int main(int argc, char **argv) {
 
 		free(ping.target.stat_data.rtts);
 	};
+	DEBUGWARN("%s", "finished");
 }
