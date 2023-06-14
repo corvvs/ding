@@ -83,11 +83,13 @@ static void	print_stats_ribbon(const t_ping* ping) {
 
 // パケットロスに関する統計データを表示
 static void	print_stats_packet_loss(const t_stat_data* stat_data) {
-	printf("%zu packets transmitted, %zu packets received, %d%% packet loss\n",
-		stat_data->packets_sent,
-		stat_data->packets_received,
-		(int)((1 - (double)stat_data->packets_received / stat_data->packets_sent) * 100)
-	);
+	printf("%zu packets transmitted, ", stat_data->packets_sent);
+	printf("%zu packets received, ", stat_data->packets_received);
+	if (stat_data->packets_sent > 0) {
+		double gain_rate = (double)stat_data->packets_received / stat_data->packets_sent;
+		printf("%d%% packet loss", (int)((1 - gain_rate) * 100));
+	}
+	printf("\n");
 }
 
 // ラウンドトリップに関する統計データを表示

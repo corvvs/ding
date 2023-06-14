@@ -1,30 +1,46 @@
 #include "ping.h"
 
-static int	resolve_host(const char* given_str, char* resolved_str, size_t resolved_max_len) {
+address_info_t*	resolve_str_into_address(const char* host_str) {
 	address_info_t	hints = {
 		.ai_family = AF_INET, .ai_socktype = SOCK_STREAM,
 	};
 	address_info_t*	res;
-	if (getaddrinfo(given_str, NULL, &hints, &res)) {
-		print_error_by_message("unknown host");
-		return -1;
+	if (getaddrinfo(host_str, NULL, &hints, &res)) {
+		return NULL;
 	}
 	DEBUGWARN("ai_family: %d", res->ai_family);
 	DEBUGWARN("AF_INET: %d", AF_INET);
 	if (res->ai_family != AF_INET) {
-		DEBUGERR("res->ai_family is not AF_INET: %d", res->ai_family);
 		freeaddrinfo(res);
-		return -1;
+		return NULL;
 	}
+	return res;
+}
+
+static int	address_to_str(const address_info_t* res, char* resolved_str, size_t resolved_max_len) {
 	const void*	red = inet_ntop(
 		res->ai_family,
 		&((socket_address_in_t *)res->ai_addr)->sin_addr,
 		resolved_str,
 		resolved_max_len
 	);
-	freeaddrinfo(res);
 	if (red == NULL) {
 		DEBUGERR("inet_ntop failed: %d(%s)", errno, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static int	resolve_host(const char* given_str, char* resolved_str, size_t resolved_max_len) {
+	// ユーザ指定ホスト -> (getaddrinfo) -> アドレス構造体 -> (inet_ntop) -> IPアドレス文字列
+	address_info_t*	res = resolve_str_into_address(given_str);
+	if (res == NULL) {
+		print_error_by_message("unknown host");
+		return -1;
+	}
+	int rv = address_to_str(res, resolved_str, resolved_max_len);
+	freeaddrinfo(res);
+	if (rv) {
 		print_error_by_message("unknown host");
 		return -1;
 	}

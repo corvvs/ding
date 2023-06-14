@@ -232,6 +232,13 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					break;
 				}
 
+				// source address
+				case 'S': {
+					PICK_ONE_ARG;
+					pref->given_source_address = *argv;
+					break;
+				}
+
 				default:
 					// 未知のオプション
 					dprintf(STDERR_FILENO, "invalid option -- '%c'\n", *arg);

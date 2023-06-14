@@ -92,17 +92,6 @@ int	ping_pong(t_ping* ping) {
 	// [初期出力]
 	print_prologue(ping);
 
-	// [シグナルハンドラ設定]
-	signal(SIGINT, sig_int);
-
-	// タイムアウトの計算
-	const timeval_t	ping_interval = ping->prefs.flood
-		? TV_PING_FLOOD_INTERVAL
-		: TV_PING_DEFAULT_INTERVAL;
-
-	// 受信タイムアウトしたかどうか
-	bool	receiving_timed_out = false;
-
 	// [送受信ループ]
 	uint16_t	sequence = 0;
 	ping->start_time = get_current_time();
@@ -113,12 +102,23 @@ int	ping_pong(t_ping* ping) {
 			break;
 		}
 	}
+
+	// タイムアウトの計算
+	const timeval_t	ping_interval = ping->prefs.flood
+		? TV_PING_FLOOD_INTERVAL
+		: TV_PING_DEFAULT_INTERVAL;
 	timeval_t		now = get_current_time();
 	timeval_t		last_request_sent = get_current_time();
 	const timeval_t	receiving_timeout = {
 		.tv_sec = ping->prefs.wait_after_final_request_s,
 		.tv_usec = 0,
 	};
+
+	// 受信タイムアウトしたかどうか
+	bool	receiving_timed_out = false;
+
+	// [シグナルハンドラ設定]
+	signal(SIGINT, sig_int);
 
 	while (should_continue_session(ping, receiving_timed_out)) {
 		if (can_send_ping(ping, receiving_timed_out)) {
@@ -175,6 +175,9 @@ int	ping_pong(t_ping* ping) {
 			print_received(ping, &acceptance, triptime);
 		}
 	}
+
+	// [シグナルハンドラ解除]
+	signal(SIGINT, SIG_DFL);
 
 	// [最終出力]
 	print_epilogue(ping);

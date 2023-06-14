@@ -13,14 +13,14 @@ t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 	int rv = recvmsg(ping->socket_fd, &msg_received, 0);
 	if (rv < 0) {
 		if (errno == EAGAIN) {
-			DEBUGOUT("timed out: %d", errno);
+			DEBUGOUT("recvmsg: timed out: %d", errno);
 			return RR_TIMEOUT;
 		}
 		if (errno == EINTR) {
-			DEBUGOUT("interrupted: %d", errno);
+			DEBUGOUT("recvmsg: interrupted: %d", errno);
 			return RR_INTERRUPTED;
 		}
-		DEBUGERR("recv_ping failed: %d(%s)", errno, strerror(errno));
+		DEBUGERR("recvmsg: failed: %d(%s)", errno, strerror(errno));
 		return RR_ERROR;
 	}
 	if (rv == 0) {
