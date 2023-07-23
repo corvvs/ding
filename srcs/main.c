@@ -37,7 +37,11 @@ int main(int argc, char **argv) {
 
 	// [ソケット作成]
 	// ソケットは全宛先で使い回すので最初に生成する
-	ping.socket_fd = create_icmp_socket(&ping.prefs);
+	int sock = create_icmp_socket(&ping.prefs);
+	if (sock < 0) {
+		return 1;
+	}
+	ping.socket_fd = sock;
 	// ソケット作成後, もしルート権限で実行されていたら, その権限を放棄する
 	if (setuid(getuid())) { // ← 実ユーザIDがルートでないなら, これでルート権限が外れる
 		print_special_error_by_errno("setuid");
