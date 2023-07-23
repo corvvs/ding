@@ -1,11 +1,11 @@
 #include "ping.h"
 #include <limits.h>
 
-int	ft_isspace(int ch) {
+static int	ft_isspace(int ch) {
 	return ch == ' ' || ('\t' <= ch && ch <= '\r');
 }
 
-size_t	ft_strtoul(const char* str, char **endptr, int base) {
+static size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	if (!(base == 0 || (2 <= base && base <= 36))) {
 		errno = EINVAL;
 		return 0;
@@ -60,7 +60,7 @@ size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	return negative ? -ans : ans;
 }
 
-int parse_number(
+static int parse_number(
 	const char* str,
 	unsigned long* out,
 	unsigned long max,
@@ -84,6 +84,8 @@ int parse_number(
 	return 0;
 }
 
+// 16進数字(0-9, a-f, A-f)を整数値(0-15)に変換する.
+// 変換できなければ -1 を返す.
 int	chtox(char c) {
 	c = ft_tolower(c);
 	if ('0' <= c && c <= '9') {
@@ -128,14 +130,17 @@ int	parse_pattern(
 	return 0;
 }
 
+#define NEXT_ONE_ARG \
+	parsed += 1;\
+	argc -= 1;\
+	argv += 1
+
 #define PICK_ONE_ARG \
 	if (argc < 2) {\
 		dprintf(STDERR_FILENO, PROGRAM_NAME ": option requires an argument -- '%c'\n", *arg);\
 		return -1;\
 	}\
-	parsed += 1;\
-	argc -= 1;\
-	argv += 1
+	NEXT_ONE_ARG
 
 int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 	int parsed = 0;
@@ -150,6 +155,29 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 			// オプションではない
 			break;
 		}
+		if (ft_strncmp(arg, "--", 2) == 0) {
+			// ロングオプションかもしれない
+			const char *long_opt = arg + 2;
+			if (ft_strcmp(long_opt, "ttl") == 0) {
+				// --ttl: TTL設定(-m と等価)
+				PICK_ONE_ARG;
+				unsigned long rv;
+				DEBUGOUT("argv: %s", *argv);
+				if (parse_number(*argv, &rv, 255, 1)) {
+					return -1;
+				}
+				pref->ttl = rv;
+				NEXT_ONE_ARG;
+				continue;
+			}
+
+			// 未知のロングオプション
+			dprintf(STDERR_FILENO, "%s: unrecognized option -- '%s'\n",
+				PROGRAM_NAME,
+				arg);
+			return -1;
+		}
+
 		// arg はおそらくオプションなので解析する
 		while (*++arg) {
 			switch (*arg) {
@@ -245,9 +273,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					return -1;
 			}
 		}
-		parsed += 1;
-		argc -= 1;
-		argv += 1;
+		NEXT_ONE_ARG;
 	}
 	return parsed;
 }
