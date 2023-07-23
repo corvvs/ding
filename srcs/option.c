@@ -267,6 +267,12 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					break;
 				}
 
+				// bypass routing
+				case 'r': {
+					pref->bypass_routing = true;
+					break;
+				}
+
 				default:
 					// 未知のオプション
 					dprintf(STDERR_FILENO, "invalid option -- '%c'\n", *arg);

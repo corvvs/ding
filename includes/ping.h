@@ -95,6 +95,8 @@ typedef struct s_preferences
 	bool		flood;
 	// ユーザ指定送信元アドレス
 	char*		given_source_address;
+	// ルーティングを無視してパケットを送信する
+	bool		bypass_routing;
 } t_preferences;
 
 // ターゲット構造体

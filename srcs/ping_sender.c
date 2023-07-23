@@ -16,7 +16,7 @@ int	send_request(t_ping* ping, uint16_t sequence) {
 	);
 	DEBUGOUT("sendto rv: %d", rv);
 	if (rv < 0) {
-		DEBUGOUT("errno: %d (%s)", errno, strerror(errno));
+		dprintf(STDERR_FILENO, "%s: sending packet: %s\n", PROGRAM_NAME, strerror(errno));
 		return rv;
 	}
 	ping->target.stat_data.packets_sent += 1;
