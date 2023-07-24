@@ -69,26 +69,36 @@ static void	print_sent(const t_ping* ping) {
 	}
 }
 
-static void	print_received(const t_ping* ping, const t_acceptance* acceptance, double triptime) {
+static void	print_received(
+	const t_ping* ping,
+	const t_acceptance* acceptance,
+	bool sending_timestamp,
+	double triptime
+) {
 	if (ping->prefs.flood) {
 		ft_putchar_fd('\b', STDOUT_FILENO);
 	} else {
-		printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+		printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
 			acceptance->icmp_whole_len,
 			stringify_address(&acceptance->ip_header->IP_HEADER_SRC),
 			acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-			acceptance->ip_header->IP_HEADER_TTL,
-			triptime
+			acceptance->ip_header->IP_HEADER_TTL
 		);
+		if (sending_timestamp) {
+			printf(" time=%.3f ms\n", triptime);
+		}
+		printf("\n");
 	}
 }
 
-static void	print_epilogue(const t_ping* ping) {
-	print_stats(ping);
+static void	print_epilogue(const t_ping* ping, bool sending_timestamp) {
+	print_stats(ping, sending_timestamp);
 }
 
 // 1つの宛先に対して ping セッションを実行する
 int	ping_pong(t_ping* ping) {
+	const bool	sending_timestamp = ping->prefs.data_size >= sizeof(timeval_t);
+
 	// [初期出力]
 	print_prologue(ping);
 
@@ -171,8 +181,8 @@ int	ping_pong(t_ping* ping) {
 			}
 
 			// [受信時出力]
-			const double triptime = mark_received(ping, &acceptance);
-			print_received(ping, &acceptance, triptime);
+			const double triptime = sending_timestamp ? mark_received(ping, &acceptance) : 0;
+			print_received(ping, &acceptance, sending_timestamp, triptime);
 		}
 	}
 
@@ -180,7 +190,7 @@ int	ping_pong(t_ping* ping) {
 	signal(SIGINT, SIG_DFL);
 
 	// [最終出力]
-	print_epilogue(ping);
+	print_epilogue(ping, sending_timestamp);
 
 	return 0;
 }

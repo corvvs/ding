@@ -103,8 +103,10 @@ static void	print_stats_roundtrip(const t_stat_data* stat_data) {
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n", min, avg, max, stddev);
 }
 
-void	print_stats(const t_ping* ping) {
+void	print_stats(const t_ping* ping, bool sending_timestamp) {
 	print_stats_ribbon(ping);
 	print_stats_packet_loss(&ping->target.stat_data);
-	print_stats_roundtrip(&ping->target.stat_data);
+	if (sending_timestamp) {
+		print_stats_roundtrip(&ping->target.stat_data);
+	}
 }

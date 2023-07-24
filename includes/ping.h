@@ -191,7 +191,7 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);
-void	print_stats(const t_ping* ping);
+void	print_stats(const t_ping* ping, bool sending_timestamp);
 
 // utils_math.c
 double	ft_square(double x);
