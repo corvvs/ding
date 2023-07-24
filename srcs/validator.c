@@ -118,8 +118,8 @@ static int	validate_received_icmp_echo_reply(
 	}
 
 	// CHECK: is icmp_whole_len long enough?
-	if (icmp_whole_len < sizeof(timeval_t)) {
-		DEBUGERR("icmp_whole_len < sizeof(timeval_t): %zu < %zu", icmp_whole_len, sizeof(timeval_t));
+	if (icmp_whole_len < sizeof(icmp_header_t)) {
+		DEBUGERR("icmp_whole_len < sizeof(icmp_header_t): %zu < %zu", icmp_whole_len, sizeof(icmp_header_t));
 		return -1;
 	}
 

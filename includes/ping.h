@@ -28,8 +28,21 @@ typedef struct sockaddr_in	socket_address_in_t;
 
 #include "compatibility.h"
 
-#define ICMP_ECHO_DATAGRAM_SIZE 64
-#define ICMP_ECHO_DATA_SIZE (ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t))
+
+#define MAX_IHL 15
+
+#define MAX_IPV4_HEADER_SIZE (MAX_IHL * 4)
+
+// 正直この値の意味が今ひとつわかっていないのだが inetutils の定義を踏襲しておく
+#define MAX_ICMP_SIZE 76
+
+#define MAX_IPV4_DATAGRAM_SIZE ((1 << 16) - 1)
+
+// ICMP データグラムのデータ部分の最大サイズ
+// = `-s` オプションの最大サイズ
+#define MAX_ICMP_DATASIZE (MAX_IPV4_DATAGRAM_SIZE - MAX_IPV4_HEADER_SIZE - MAX_ICMP_SIZE)
+
+#define ICMP_ECHO_DEFAULT_DATAGRAM_SIZE (64 - 8)
 
 #define TV_PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
 #define TV_PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
@@ -91,6 +104,8 @@ typedef struct s_preferences
 	uint64_t	session_timeout_s;
 	// ToS: Type of Service
 	int			tos;
+	// データ部分のサイズ
+	size_t		data_size;
 	// データパターン
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
 	// flood
@@ -176,7 +191,7 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);
-void	print_stats(const t_ping* ping);
+void	print_stats(const t_ping* ping, bool sending_timestamp);
 
 // utils_math.c
 double	ft_square(double x);

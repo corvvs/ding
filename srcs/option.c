@@ -241,6 +241,16 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					break;
 				}
 
+				case 's': {
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, MAX_ICMP_DATASIZE, 0)) {
+						return -1;
+					}
+					pref->data_size = rv;
+					break;
+				}
+
 				// データパターン
 				case 'p': {
 					PICK_ONE_ARG;
@@ -299,6 +309,7 @@ t_preferences	default_preferences(void) {
 	return (t_preferences){
 		.verbose = false,
 		.count = 0,
+		.data_size = ICMP_ECHO_DEFAULT_DATAGRAM_SIZE,
 		.ttl = 64,
 		.session_timeout_s = 0,
 		.wait_after_final_request_s = 10,
