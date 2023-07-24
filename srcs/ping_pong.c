@@ -54,7 +54,7 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 }
 
 static void	print_prologue(const t_ping* ping) {
-	const size_t datagram_payload_len = ICMP_ECHO_DATAGRAM_SIZE - sizeof(icmp_header_t);
+	const size_t datagram_payload_len = ping->prefs.data_size;
 	printf("PING %s (%s): %zu data bytes",
 		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
 	if (ping->prefs.verbose) {
