@@ -89,6 +89,8 @@ typedef struct s_preferences
 	uint64_t	wait_after_final_request_s;
 	// pingセッションのタイムアウト時間(秒)
 	uint64_t	session_timeout_s;
+	// ToS: Type of Service
+	int			tos;
 	// データパターン
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
 	// flood
