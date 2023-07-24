@@ -9,10 +9,20 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 			return -1;
 		}
 	}
+
+	// ToS設定
+	if (prefs->tos >= 0) {
+		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &prefs->tos, sizeof(prefs->tos)) < 0) {
+			perror("setsockopt failed");
+			return -1;
+		}
+		DEBUGWARN("tos set OK; %d", prefs->tos);
+	}
+
 	// ルーティングを無視する
 	if (prefs->bypass_routing) {
 		int one = 1; // boolean を有効にするには 1 を指定する
-		if (setsockopt (sock, SOL_SOCKET, SO_DONTROUTE, (char *) &one, sizeof(one))) {
+		if (setsockopt (sock, SOL_SOCKET, SO_DONTROUTE, (char *)&one, sizeof(one))) {
 			perror("setsockopt failed");
 			return -1;
 		}

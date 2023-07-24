@@ -267,6 +267,17 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					break;
 				}
 
+				// ToS
+				case 'T': {
+					PICK_ONE_ARG;
+					unsigned long rv;
+					if (parse_number(*argv, &rv, 255, 0)) {
+						return -1;
+					}
+					pref->tos = rv;
+					break;
+				}
+
 				// bypass routing
 				case 'r': {
 					pref->bypass_routing = true;
@@ -291,5 +302,6 @@ t_preferences	default_preferences(void) {
 		.ttl = 64,
 		.session_timeout_s = 0,
 		.wait_after_final_request_s = 10,
+		.tos = -1,
 	};
 }
