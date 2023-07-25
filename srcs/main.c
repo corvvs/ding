@@ -22,6 +22,13 @@ int main(int argc, char **argv) {
 	if (parsed_options < 0) {
 		return 64;
 	}
+
+	// もし show_usage が有効になっている場合 usage を表示して終了する
+	if (pref.show_usage) {
+		print_usage();
+		return 0;
+	}
+
 	argc -= parsed_options;
 	argv += parsed_options;
 

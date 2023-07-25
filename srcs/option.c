@@ -316,6 +316,12 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					break;
 				}
 
+				// show usage
+				case '?': {
+					pref->show_usage = true;
+					break;
+				}
+
 				default:
 					// 未知のオプション
 					dprintf(STDERR_FILENO, "invalid option -- '%c'\n", *arg);
@@ -338,5 +344,6 @@ t_preferences	default_preferences(void) {
 		.wait_after_final_request_s = 10,
 		.tos = -1,
 		.resolve_addr_in_ip_ts = true,
+		.show_usage = false,
 	};
 }
