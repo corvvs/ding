@@ -34,11 +34,11 @@ static size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	const char*	bases = "0123456789abcdefghijklmnopqrstuvwxyz";
 	while (*str) {
 		char* ptr_digit = ft_strchr(bases, ft_tolower(*str));
-		DEBUGOUT("ptr_digit: %c", *ptr_digit);
 		if (!ptr_digit) {
 			// 基数外の文字が出現した
 			break;
 		}
+		DEBUGOUT("ptr_digit: %c", *ptr_digit);
 		unsigned long	digit = ptr_digit - bases;
 		if (digit >= actual_base) {
 			// 桁の数字が基数以上だった
