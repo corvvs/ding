@@ -133,6 +133,9 @@ typedef struct s_preferences
 	char*		given_source_address;
 	// ルーティングを無視してパケットを送信する
 	bool		bypass_routing;
+
+	// これが有効な場合, pingを実行せずヘルプを表示して終了する
+	bool		show_usage;
 } t_preferences;
 
 // ターゲット構造体
@@ -169,6 +172,9 @@ typedef struct s_ping
 // option.c
 int				parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
+
+// usage.c
+void			print_usage(void);
 
 // host_address.c
 address_info_t*	resolve_str_into_address(const char* host_str);
