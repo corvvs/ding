@@ -14,8 +14,14 @@ static char*	resolve_host(uint32_t addr) {
 	);
 	ft_memset(&sa, 0, sizeof(socket_address_in_t));
 	sa.sin_family = AF_INET;
-	inet_pton(AF_INET, addr_str, &sa.sin_addr);
+	errno = 0;
+	if (inet_pton(AF_INET, addr_str, &sa.sin_addr) != 1) {
+		DEBUGWARN("failed to inet_pton for %s: %s", addr_str, strerror(errno));
+		return NULL;
+	}
+	errno = 0;
 	if (getnameinfo((struct sockaddr*)&sa, sizeof(struct sockaddr_in), node, sizeof(node), NULL, 0, NI_NAMEREQD)) {
+		DEBUGWARN("failed to getnameinfo for %s: %s", addr_str, strerror(errno));
 		return NULL;
 	}
 	return node;
