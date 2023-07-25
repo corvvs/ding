@@ -82,7 +82,7 @@ void	print_ip_timestamp(
 	bool			is_first = true;
 	const size_t	ts_len = ip_header_options_pointer - (IPOPT_MINOFF + 1);
 	uint8_t			ts_buffer[ts_len];
-	const bool		try_to_resolve_host = true;
+	const bool		try_to_resolve_host = ping->prefs.resolve_addr_in_ip_ts;
 	ft_memcpy(ts_buffer, ip_header_options + IPOPT_MINOFF, ts_len);
 	for (size_t	i = 0; i < ts_len; i += unit_size) {
 		if (is_first) { printf("TS:"); }

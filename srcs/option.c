@@ -224,6 +224,12 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					break;
 				}
 
+				// dont resolve address in ip timestamp
+				case 'n': {
+					pref->resolve_addr_in_ip_ts = false;
+					break;
+				}
+
 				// preload
 				case 'l': {
 					PICK_ONE_ARG;
@@ -331,5 +337,6 @@ t_preferences	default_preferences(void) {
 		.session_timeout_s = 0,
 		.wait_after_final_request_s = 10,
 		.tos = -1,
+		.resolve_addr_in_ip_ts = true,
 	};
 }

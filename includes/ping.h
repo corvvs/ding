@@ -125,6 +125,8 @@ typedef struct s_preferences
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
 	// IPタイムスタンプ種別
 	t_ip_timestamp_type	ip_ts_type;
+	// IPタイムスタンプの送信元アドレスを解決するかどうか
+	bool		resolve_addr_in_ip_ts;
 	// flood
 	bool		flood;
 	// ユーザ指定送信元アドレス
