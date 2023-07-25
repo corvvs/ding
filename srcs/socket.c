@@ -35,7 +35,7 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 			? sizeof(uint32_t)
 			: (sizeof(uint32_t) + sizeof(uint32_t));
 		options[IPOPT_OPTVAL] = IPOPT_TS;
-		options[IPOPT_OLEN] = (MAX_IPOPTLEN - 4) / unit_octets * unit_octets;
+		options[IPOPT_OLEN] = (MAX_IPOPTLEN - 4) / unit_octets * unit_octets + 4;
 		options[IPOPT_OFFSET] = IPOPT_MINOFF + 1;
 		const int8_t type = prefs->ip_ts_type == IP_TST_TSONLY
 			? IPOPT_TS_TSONLY

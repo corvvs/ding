@@ -23,7 +23,7 @@ void	print_unexpected_icmp(t_acceptance* acceptance) {
 
 			dprintf(
 				STDERR_FILENO,
-				"%zu bytes from %s: Time to live exeeded\n",
+				"%zu bytes from %s: Time to live exceeded\n",
 				original_icmp_whole_len,
 				stringify_address(&ip_header->IP_HEADER_SRC)
 			);

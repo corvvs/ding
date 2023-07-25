@@ -187,6 +187,9 @@ int	send_request(t_ping* ping, uint16_t sequence);
 // pong_receiver.c
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
+// ip_options.c
+void	print_ip_timestamp(const t_ping* ping, const t_acceptance* acceptance);
+
 // protocol_ip.c
 void		flip_endian_ip(void* mem);
 
