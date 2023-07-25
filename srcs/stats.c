@@ -11,8 +11,10 @@ static void	extend_buffer(t_stat_data* stat_data) {
 // ASSERTION: received_icmp のサイズが sizeof(timeval_t) 以上
 double	mark_received(t_ping* ping, const t_acceptance* acceptance) {
 	// アライメント違反を防ぐために, 一旦別バッファにコピーする.
-	uint8_t			buffer_sent[sizeof(timeval_t)];
-	const uint8_t*	received_icmp = acceptance->recv_buffer + sizeof(ip_header_t);
+	uint8_t				buffer_sent[sizeof(timeval_t)];
+	const ip_header_t*	ip_header = (const ip_header_t*)acceptance->recv_buffer;
+	const size_t		ip_header_len = ip_header->IP_HEADER_HL * 4;
+	const uint8_t*		received_icmp = acceptance->recv_buffer + ip_header_len;
 	ft_memcpy(buffer_sent, received_icmp + sizeof(icmp_header_t), sizeof(timeval_t));
 
 	t_stat_data*		stat_data = &ping->target.stat_data;

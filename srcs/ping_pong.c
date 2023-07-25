@@ -77,18 +77,23 @@ static void	print_received(
 ) {
 	if (ping->prefs.flood) {
 		ft_putchar_fd('\b', STDOUT_FILENO);
-	} else {
-		printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
-			acceptance->icmp_whole_len,
-			stringify_address(&acceptance->ip_header->IP_HEADER_SRC),
-			acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-			acceptance->ip_header->IP_HEADER_TTL
-		);
-		if (sending_timestamp) {
-			printf(" time=%.3f ms\n", triptime);
-		}
-		printf("\n");
+		return;
 	}
+
+	// 本体
+	printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
+		acceptance->icmp_whole_len,
+		stringify_address(&acceptance->ip_header->IP_HEADER_SRC),
+		acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+		acceptance->ip_header->IP_HEADER_TTL
+	);
+	if (sending_timestamp) {
+		printf(" time=%.3f ms", triptime);
+	}
+	printf("\n");
+
+	// もしあるならIPタイムスタンプを表示する
+	print_ip_timestamp(ping, acceptance);
 }
 
 static void	print_epilogue(const t_ping* ping, bool sending_timestamp) {

@@ -9,6 +9,7 @@ FILES	:=	\
 			ping_pong.c\
 			ping_sender.c\
 			pong_receiver.c\
+			ip_options.c\
 			protocol_ip.c\
 			protocol_icmp.c\
 			unexpected_icmp.c\
