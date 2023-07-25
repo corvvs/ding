@@ -29,9 +29,18 @@ typedef struct sockaddr_in	socket_address_in_t;
 #include "compatibility.h"
 
 
+#define MIN_IHL 5
 #define MAX_IHL 15
 
+#define MIN_IPV4_HEADER_SIZE (MIN_IHL * 4)
 #define MAX_IPV4_HEADER_SIZE (MAX_IHL * 4)
+#ifndef MAX_IPOPTLEN
+# define MAX_IPOPTLEN (MAX_IPV4_HEADER_SIZE - MIN_IPV4_HEADER_SIZE)
+#endif
+#ifndef IPOPT_POS_OV_FLG
+# define IPOPT_POS_OV_FLG 3
+#endif
+
 
 // 正直この値の意味が今ひとつわかっていないのだが inetutils の定義を踏襲しておく
 #define MAX_ICMP_SIZE 76
@@ -88,6 +97,12 @@ typedef struct s_stat_data {
 
 #define MAX_DATA_PATTERN_LEN 16
 
+typedef enum e_ip_timestamp_type {
+	IP_TST_NONE,
+	IP_TST_TSONLY,
+	IP_TST_TSADDR,
+}	t_ip_timestamp_type;
+
 typedef struct s_preferences
 {
 	// verbose モード
@@ -108,6 +123,8 @@ typedef struct s_preferences
 	size_t		data_size;
 	// データパターン
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
+	// IPタイムスタンプ種別
+	t_ip_timestamp_type	ip_ts_type;
 	// flood
 	bool		flood;
 	// ユーザ指定送信元アドレス

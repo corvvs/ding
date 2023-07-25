@@ -69,15 +69,15 @@ static int parse_number(
 	char*		err;
 	unsigned long rv = ft_strtoul(str, &err, 0);
 	if (*err) {
-		dprintf(STDERR_FILENO, PROGRAM_NAME ": invalid value (`%s' near `%s')", str, err);
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": invalid value (`%s' near `%s')\n", str, err);
 		return -1;
 	}
 	if (rv > max) {
-		dprintf(STDERR_FILENO, PROGRAM_NAME ": option value too big: %s", str);
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": option value too big: %s\n", str);
 		return -1;
 	}
 	if (rv < min) {
-		dprintf(STDERR_FILENO, PROGRAM_NAME ": option value too small: %s", str);
+		dprintf(STDERR_FILENO, PROGRAM_NAME ": option value too small: %s\n", str);
 		return -1;
 	}
 	*out = rv;
@@ -158,6 +158,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 		if (ft_strncmp(arg, "--", 2) == 0) {
 			// ロングオプションかもしれない
 			const char *long_opt = arg + 2;
+
 			if (ft_strcmp(long_opt, "ttl") == 0) {
 				// --ttl: TTL設定(-m と等価)
 				PICK_ONE_ARG;
@@ -167,6 +168,21 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					return -1;
 				}
 				pref->ttl = rv;
+				NEXT_ONE_ARG;
+				continue;
+			}
+
+			if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
+				// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
+				PICK_ONE_ARG;
+				if (ft_strcmp(*argv, "tsonly") == 0) {
+					pref->ip_ts_type = IP_TST_TSONLY;
+				} else if (ft_strcmp(*argv, "tsaddr") == 0) {
+					pref->ip_ts_type = IP_TST_TSADDR;
+				} else {
+					dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *argv);
+					return -1;
+				}
 				NEXT_ONE_ARG;
 				continue;
 			}
@@ -310,6 +326,7 @@ t_preferences	default_preferences(void) {
 		.verbose = false,
 		.count = 0,
 		.data_size = ICMP_ECHO_DEFAULT_DATAGRAM_SIZE,
+		.ip_ts_type = IP_TST_NONE,
 		.ttl = 64,
 		.session_timeout_s = 0,
 		.wait_after_final_request_s = 10,

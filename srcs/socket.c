@@ -28,6 +28,25 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 		}
 	}
 
+	// IPタイムスタンプオプションをセット
+	if (prefs->ip_ts_type != IP_TST_NONE) {
+		uint8_t options[MAX_IPOPTLEN] = {0};
+		const size_t unit_octets = prefs->ip_ts_type == IP_TST_TSONLY
+			? sizeof(uint32_t)
+			: (sizeof(uint32_t) + sizeof(uint32_t));
+		options[IPOPT_OPTVAL] = IPOPT_TS;
+		options[IPOPT_OLEN] = (MAX_IPOPTLEN - 4) / unit_octets * unit_octets;
+		options[IPOPT_OFFSET] = IPOPT_MINOFF + 1;
+		const int8_t type = prefs->ip_ts_type == IP_TST_TSONLY
+			? IPOPT_TS_TSONLY
+			: IPOPT_TS_TSANDADDR;
+		options[IPOPT_POS_OV_FLG] = type;
+		if (setsockopt (sock, IPPROTO_IP, IP_OPTIONS, options, options[IPOPT_OLEN])) {
+			perror("setsockopt failed");
+			return -1;
+		}
+	}
+
 	// ソースアドレス固定
 	if (prefs->given_source_address) {
 		// ソースアドレスをアドレス構造体に変換
