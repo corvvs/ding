@@ -130,17 +130,25 @@ int	parse_pattern(
 	return 0;
 }
 
-#define NEXT_ONE_ARG \
+#define PRECEDE_NEXT_ARG \
 	parsed += 1;\
 	argc -= 1;\
 	argv += 1
 
-#define PICK_ONE_ARG \
+#define PICK_NEXT_ARG \
 	if (argc < 2) {\
 		dprintf(STDERR_FILENO, PROGRAM_NAME ": option requires an argument -- '%c'\n", *arg);\
 		return -1;\
 	}\
-	NEXT_ONE_ARG
+	PRECEDE_NEXT_ARG
+
+#define PICK_ONE_ARG \
+	if (*(arg + 1)) {\
+		++arg;\
+	} else {\
+		PICK_NEXT_ARG;\
+		arg = *argv;\
+	}\
 
 int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 	int parsed = 0;
@@ -161,20 +169,20 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 
 			if (ft_strcmp(long_opt, "ttl") == 0) {
 				// --ttl: TTL設定(-m と等価)
-				PICK_ONE_ARG;
+				PICK_NEXT_ARG;
 				unsigned long rv;
 				DEBUGOUT("argv: %s", *argv);
 				if (parse_number(*argv, &rv, 255, 1)) {
 					return -1;
 				}
 				pref->ttl = rv;
-				NEXT_ONE_ARG;
+				PRECEDE_NEXT_ARG;
 				continue;
 			}
 
 			if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
 				// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
-				PICK_ONE_ARG;
+				PICK_NEXT_ARG;
 				if (ft_strcmp(*argv, "tsonly") == 0) {
 					pref->ip_ts_type = IP_TST_TSONLY;
 				} else if (ft_strcmp(*argv, "tsaddr") == 0) {
@@ -183,7 +191,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *argv);
 					return -1;
 				}
-				NEXT_ONE_ARG;
+				PRECEDE_NEXT_ARG;
 				continue;
 			}
 
@@ -206,7 +214,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 				case 'c': {
 					PICK_ONE_ARG;
 					unsigned long rv;
-					if (parse_number(*argv, &rv, ULONG_MAX, 0)) {
+					if (parse_number(arg, &rv, ULONG_MAX, 0)) {
 						return -1;
 					}
 					pref->count = rv;
@@ -328,7 +336,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 					return -1;
 			}
 		}
-		NEXT_ONE_ARG;
+		PRECEDE_NEXT_ARG;
 	}
 	return parsed;
 }
