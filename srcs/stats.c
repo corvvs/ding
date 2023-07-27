@@ -10,6 +10,12 @@ static void	extend_buffer(t_stat_data* stat_data) {
 
 // ASSERTION: received_icmp のサイズが sizeof(timeval_t) 以上
 double	mark_received(t_ping* ping, const t_acceptance* acceptance) {
+	t_stat_data*	stat_data = &ping->target.stat_data;
+	if (!ping->sending_timestamp) {
+		// ICMPにタイムスタンプを入れていない場合は, 受信カウントだけ増やして終わり
+		stat_data->packets_received += 1;
+		return 0;
+	}
 	// アライメント違反を防ぐために, 一旦別バッファにコピーする.
 	uint8_t				buffer_sent[sizeof(timeval_t)];
 	const ip_header_t*	ip_header = (const ip_header_t*)acceptance->recv_buffer;
@@ -17,13 +23,12 @@ double	mark_received(t_ping* ping, const t_acceptance* acceptance) {
 	const uint8_t*		received_icmp = acceptance->recv_buffer + ip_header_len;
 	ft_memcpy(buffer_sent, received_icmp + sizeof(icmp_header_t), sizeof(timeval_t));
 
-	t_stat_data*		stat_data = &ping->target.stat_data;
 	const timeval_t*	epoch_sent = (const timeval_t*)buffer_sent;
 	if (stat_data->packets_received >= stat_data->rtts_cap) {
 		extend_buffer(stat_data);
 	}
 
-	double rtt = diff_times(&acceptance->epoch_received, epoch_sent);
+	double	rtt = diff_times(&acceptance->epoch_received, epoch_sent);
 	stat_data->rtts[stat_data->packets_received] = rtt;
 	stat_data->packets_received += 1;
 	return rtt;
@@ -105,10 +110,10 @@ static void	print_stats_roundtrip(const t_stat_data* stat_data) {
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n", min, avg, max, stddev);
 }
 
-void	print_stats(const t_ping* ping, bool sending_timestamp) {
+void	print_stats(const t_ping* ping) {
 	print_stats_ribbon(ping);
 	print_stats_packet_loss(&ping->target.stat_data);
-	if (sending_timestamp) {
+	if (ping->sending_timestamp) {
 		print_stats_roundtrip(&ping->target.stat_data);
 	}
 }
