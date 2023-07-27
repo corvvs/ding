@@ -160,8 +160,7 @@ int	ping_pong(t_ping* ping) {
 			}
 			DEBUGOUT("recv_timeout: %.3fms", get_ms(&recv_timeout));
 			if (setsockopt(ping->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(timeval_t)) < 0) {
-				perror("setsockopt failed");
-				exit(EXIT_FAILURE);
+				exit_with_error(EXIT_FAILURE, errno, "setsockopt(RECV Timeout)");
 			}
 
 			// [受信とチェック]
