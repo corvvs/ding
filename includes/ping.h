@@ -41,6 +41,9 @@ typedef struct sockaddr_in	socket_address_in_t;
 # define IPOPT_POS_OV_FLG 3
 #endif
 
+#define STATUS_SUCCEEDED 0
+#define STATUS_GENERIC_FAILED 1
+#define STATUS_OPERAND_FAILED 64
 
 // 正直この値の意味が今ひとつわかっていないのだが inetutils の定義を踏襲しておく
 #define MAX_ICMP_SIZE 76
@@ -171,8 +174,14 @@ typedef struct s_ping
 	t_target		target;
 } t_ping;
 
+typedef struct	s_arguments {
+	int		argc;
+	char**	argv;
+}	t_arguments;
+
 // option.c
-int				parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
+void			proceed_arguments(t_arguments* args, int n);
+int				parse_option(t_arguments* args, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
 
 // usage.c

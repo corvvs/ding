@@ -131,15 +131,19 @@ int	parse_pattern(
 	return 0;
 }
 
+void	proceed_arguments(t_arguments* args, int n) {
+	args->argc -= n;
+	args->argv += n;
+}
+
 // argv を1つ進める
 #define PRECEDE_NEXT_ARG \
 	parsed += 1;\
-	argc -= 1;\
-	argv += 1
+	proceed_arguments(args, 1)
 
 // argv を1つ引数用として進める
 #define PICK_NEXT_ARG \
-	if (argc < 2) {\
+	if (args->argc < 2) {\
 		dprintf(STDERR_FILENO, PROGRAM_NAME ": option requires an argument -- '%c'\n", *arg);\
 		return -1;\
 	}\
@@ -152,7 +156,7 @@ int	parse_pattern(
 		++arg;\
 	} else {\
 		PICK_NEXT_ARG;\
-		arg = *argv;\
+		arg = *args->argv;\
 	}\
 
 // argを最後まで進める
@@ -178,11 +182,11 @@ int	parse_pattern(
 	break;\
 }
 
-int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
+int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 	int parsed = 0;
-	while (argc > 0) {
-		const char*	arg = *argv;
-		DEBUGOUT("argc: %d, arg: %s", argc, arg);
+	while (args->argc > 0) {
+		const char*	arg = *args->argv;
+		DEBUGOUT("argc: %d, arg: %s", args->argc, arg);
 		if (arg == NULL) {
 			// ありえないはずだが・・・
 			DEBUGERR("%s", "argv has an NULL");
@@ -200,7 +204,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 				// --ttl: TTL設定(-m と等価)
 				PICK_NEXT_ARG;
 				unsigned long rv;
-				if (parse_number(*argv, &rv, 255, 1)) {
+				if (parse_number(*args->argv, &rv, 255, 1)) {
 					return -1;
 				}
 				pref->ttl = rv;
@@ -211,12 +215,12 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 			if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
 				// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
 				PICK_NEXT_ARG;
-				if (ft_strcmp(*argv, "tsonly") == 0) {
+				if (ft_strcmp(*args->argv, "tsonly") == 0) {
 					pref->ip_ts_type = IP_TST_TSONLY;
-				} else if (ft_strcmp(*argv, "tsaddr") == 0) {
+				} else if (ft_strcmp(*args->argv, "tsaddr") == 0) {
 					pref->ip_ts_type = IP_TST_TSADDR;
 				} else {
-					dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *argv);
+					dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *args->argv);
 					return -1;
 				}
 				PRECEDE_NEXT_ARG;
