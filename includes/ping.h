@@ -129,7 +129,7 @@ typedef struct s_preferences
 	// IPタイムスタンプ種別
 	t_ip_timestamp_type	ip_ts_type;
 	// IPタイムスタンプの送信元アドレスを解決するかどうか
-	bool		resolve_addr_in_ip_ts;
+	bool		dont_resolve_addr_in_ip_ts;
 	// flood
 	bool		flood;
 	// ユーザ指定送信元アドレス
@@ -183,6 +183,10 @@ typedef struct	s_arguments {
 void			proceed_arguments(t_arguments* args, int n);
 int				parse_option(t_arguments* args, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
+
+// option_aux.c
+int				parse_number(const char* str, unsigned long* out, unsigned long min, unsigned long max);
+int				parse_pattern(const char* str, char* buffer, size_t max_len);
 
 // usage.c
 void			print_usage(void);
