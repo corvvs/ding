@@ -7,7 +7,7 @@ void	print_usage(void) {
 	printf("  -c                         stop after sending NUMBER packets\n");
 	printf("  -n                         do not resolve host addresses\n");
 	printf("  -r                         send directly to a host on an attached network\n");
-	printf("      --ttl=N                specify N as time-to-live\n");
+	printf("  -m, --ttl=N                specify N as time-to-live\n");
 	printf("  -T                         set type of service (TOS) to NUM\n");
 	printf("  -v                         verbose output\n");
 	printf("  -w                         stop after N seconds\n");

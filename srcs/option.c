@@ -34,7 +34,7 @@ static size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	const char*	bases = "0123456789abcdefghijklmnopqrstuvwxyz";
 	while (*str) {
 		char* ptr_digit = ft_strchr(bases, ft_tolower(*str));
-		if (!ptr_digit) {
+		if (ptr_digit == NULL) {
 			// 基数外の文字が出現した
 			break;
 		}
@@ -56,6 +56,7 @@ static size_t	ft_strtoul(const char* str, char **endptr, int base) {
 	}
 	if (endptr) {
 		*endptr = (char*)str;
+		DEBUGOUT("endptr: %p: %d", *endptr, **endptr);
 	}
 	return negative ? -ans : ans;
 }
@@ -63,8 +64,8 @@ static size_t	ft_strtoul(const char* str, char **endptr, int base) {
 static int parse_number(
 	const char* str,
 	unsigned long* out,
-	unsigned long max,
-	unsigned long min
+	unsigned long min,
+	unsigned long max
 ) {
 	char*		err;
 	unsigned long rv = ft_strtoul(str, &err, 0);
@@ -130,11 +131,13 @@ int	parse_pattern(
 	return 0;
 }
 
+// argv を1つ進める
 #define PRECEDE_NEXT_ARG \
 	parsed += 1;\
 	argc -= 1;\
 	argv += 1
 
+// argv を1つ引数用として進める
 #define PICK_NEXT_ARG \
 	if (argc < 2) {\
 		dprintf(STDERR_FILENO, PROGRAM_NAME ": option requires an argument -- '%c'\n", *arg);\
@@ -142,6 +145,8 @@ int	parse_pattern(
 	}\
 	PRECEDE_NEXT_ARG
 
+// arg を1文字進める
+// 進められない場合はargvを1つ進める
 #define PICK_ONE_ARG \
 	if (*(arg + 1)) {\
 		++arg;\
@@ -150,10 +155,34 @@ int	parse_pattern(
 		arg = *argv;\
 	}\
 
+// argを最後まで進める
+#define EXHAUST_ARG \
+	arg = *arg ? (arg + ft_strlen(arg) - 1) : arg
+
+// 整数引数を取るショートオプションのラッパー
+#define PARSE_NUMBER_SOPT(ch, store, min, max) case ch: {\
+	PICK_ONE_ARG;\
+	unsigned long rv;\
+	if (parse_number(arg, &rv, min, max)) {\
+		return -1;\
+	}\
+	EXHAUST_ARG;\
+	store = rv;\
+	break;\
+}
+// ロングオプション用のラッパーはない
+
+// フラグ ショートオプションのラッパー
+#define PARSE_FLAG_SOPT(ch, store) case ch: {\
+	store = true;\
+	break;\
+}
+
 int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 	int parsed = 0;
 	while (argc > 0) {
 		const char*	arg = *argv;
+		DEBUGOUT("argc: %d, arg: %s", argc, arg);
 		if (arg == NULL) {
 			// ありえないはずだが・・・
 			DEBUGERR("%s", "argv has an NULL");
@@ -171,7 +200,6 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 				// --ttl: TTL設定(-m と等価)
 				PICK_NEXT_ARG;
 				unsigned long rv;
-				DEBUGOUT("argv: %s", *argv);
 				if (parse_number(*argv, &rv, 255, 1)) {
 					return -1;
 				}
@@ -205,128 +233,56 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 		// arg はおそらくオプションなので解析する
 		while (*++arg) {
 			switch (*arg) {
+
 				// verbose
-				case 'v':
-					pref->verbose = true;
-					break;
-
-				// count
-				case 'c': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(arg, &rv, ULONG_MAX, 0)) {
-						return -1;
-					}
-					pref->count = rv;
-					break;
-				}
-
-				// ttl
-				case 'm': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(*argv, &rv, 255, 1)) {
-						return -1;
-					}
-					pref->ttl = rv;
-					break;
-				}
-
+				PARSE_FLAG_SOPT('v', pref->verbose)
 				// dont resolve address in ip timestamp
-				case 'n': {
-					pref->resolve_addr_in_ip_ts = false;
-					break;
-				}
+				PARSE_FLAG_SOPT('n', pref->resolve_addr_in_ip_ts)
+				// bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
+				PARSE_FLAG_SOPT('r', pref->bypass_routing)
+				// show usage
+				PARSE_FLAG_SOPT('?', pref->show_usage)
 
-				// preload
-				case 'l': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(*argv, &rv, INT_MAX, 0)) {
-						return -1;
-					}
-					pref->preload = rv;
-					break;
-				}
+				// count - 送信するping(ICMP Echo)の数
+				PARSE_NUMBER_SOPT('c', pref->count, 0, ULONG_MAX)
+				// ICMP データサイズ - 送信するICMP Echoのデータサイズ; 16未満を指定するとRTTを計測しなくなる
+				PARSE_NUMBER_SOPT('s', pref->data_size, 1, MAX_ICMP_DATASIZE)
+				// preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
+				PARSE_NUMBER_SOPT('l', pref->preload, 0, INT_MAX)
+				// セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する
+				PARSE_NUMBER_SOPT('w', pref->session_timeout_s, 1, INT_MAX)
+				// 最終送信後タイムアウト - そのセッションの最後のping送信から指定時間経過するとセッションが終了する
+				PARSE_NUMBER_SOPT('W', pref->wait_after_final_request_s, 1, INT_MAX)
+				// TTL - 送信するIPデータグラムのTTL
+				PARSE_NUMBER_SOPT('m', pref->ttl, 1, 255)
+				// ToS - 送信するIPデータグラムのToS
+				PARSE_NUMBER_SOPT('T', pref->tos, 0, 255)
 
-				// セッションタイムアウト
-				case 'w': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(*argv, &rv, INT_MAX, 1)) {
-						return -1;
-					}
-					pref->session_timeout_s = rv;
-					break;
-				}
-
-				// 最終送信後タイムアウト
-				case 'W': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(*argv, &rv, INT_MAX, 1)) {
-						return -1;
-					}
-					pref->wait_after_final_request_s = rv;
-					break;
-				}
-
-				case 's': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(*argv, &rv, MAX_ICMP_DATASIZE, 0)) {
-						return -1;
-					}
-					pref->data_size = rv;
-					break;
-				}
-
-				// データパターン
+				// データパターン - 送信するICMP Echoのデータ部分を埋めるパターン
 				case 'p': {
 					PICK_ONE_ARG;
-					if (parse_pattern(*argv, pref->data_pattern, MAX_DATA_PATTERN_LEN)) {
+					if (parse_pattern(arg, pref->data_pattern, MAX_DATA_PATTERN_LEN)) {
 						return -1;
 					}
+					EXHAUST_ARG;
 					break;
 				}
 
-				// flood
+				// ソースアドレス - 使用するソケットを指定したアドレスにbindする
+				case 'S': {
+					PICK_ONE_ARG;
+					pref->given_source_address = (char*)arg;
+					EXHAUST_ARG;
+					break;
+				}
+
+				// flood - floodモードで実行する
 				case 'f': {
 					if (!by_root) {
 						print_error_by_message("flood ping is not permitted");
 						return -1;
 					}
 					pref->flood = true;
-					break;
-				}
-
-				// source address
-				case 'S': {
-					PICK_ONE_ARG;
-					pref->given_source_address = *argv;
-					break;
-				}
-
-				// ToS
-				case 'T': {
-					PICK_ONE_ARG;
-					unsigned long rv;
-					if (parse_number(*argv, &rv, 255, 0)) {
-						return -1;
-					}
-					pref->tos = rv;
-					break;
-				}
-
-				// bypass routing
-				case 'r': {
-					pref->bypass_routing = true;
-					break;
-				}
-
-				// show usage
-				case '?': {
-					pref->show_usage = true;
 					break;
 				}
 
@@ -343,15 +299,11 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 
 t_preferences	default_preferences(void) {
 	return (t_preferences){
-		.verbose = false,
-		.count = 0,
 		.data_size = ICMP_ECHO_DEFAULT_DATAGRAM_SIZE,
 		.ip_ts_type = IP_TST_NONE,
 		.ttl = 64,
-		.session_timeout_s = 0,
 		.wait_after_final_request_s = 10,
 		.tos = -1,
 		.resolve_addr_in_ip_ts = true,
-		.show_usage = false,
 	};
 }
