@@ -242,6 +242,8 @@ double		diff_times(const timeval_t* a, const timeval_t* b);
 void	print_error_by_message(const char* message);
 void	print_error_by_errno(void);
 void	print_special_error_by_errno(const char* name);
+void	exit_with_error(int status, int error_no, const char* message);
+
 
 // utils_debug.c
 void	debug_hexdump(const char* label, const void* mem, size_t len);
