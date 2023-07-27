@@ -164,6 +164,8 @@ typedef struct s_ping
 	timeval_t		start_time;
 	// 設定
 	t_preferences	prefs;
+	// ICMPデータグラムにタイムスタンプを含めるか否か
+	bool			sending_timestamp;
 
 	// 宛先に依存するパラメータ
 	t_target		target;
@@ -219,7 +221,7 @@ int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);
-void	print_stats(const t_ping* ping, bool sending_timestamp);
+void	print_stats(const t_ping* ping);
 
 // utils_math.c
 double	ft_square(double x);

@@ -246,7 +246,7 @@ int	parse_option(int argc, char** argv, bool by_root, t_preferences* pref) {
 				// count - 送信するping(ICMP Echo)の数
 				PARSE_NUMBER_SOPT('c', pref->count, 0, ULONG_MAX)
 				// ICMP データサイズ - 送信するICMP Echoのデータサイズ; 16未満を指定するとRTTを計測しなくなる
-				PARSE_NUMBER_SOPT('s', pref->data_size, 1, MAX_ICMP_DATASIZE)
+				PARSE_NUMBER_SOPT('s', pref->data_size, 0, MAX_ICMP_DATASIZE)
 				// preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
 				PARSE_NUMBER_SOPT('l', pref->preload, 0, INT_MAX)
 				// セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する

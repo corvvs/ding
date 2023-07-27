@@ -40,6 +40,8 @@ int main(int argc, char **argv) {
 	t_ping ping = {
 		.icmp_header_id = getpid(),
 		.prefs = pref,
+		// ICMP データサイズが timeval_t のサイズ以上なら, ICMP Echo にタイムスタンプを載せる
+		.sending_timestamp = pref.data_size >= sizeof(timeval_t),
 	};
 
 	// [ソケット作成]

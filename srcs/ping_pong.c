@@ -72,7 +72,6 @@ static void	print_sent(const t_ping* ping) {
 static void	print_received(
 	const t_ping* ping,
 	const t_acceptance* acceptance,
-	bool sending_timestamp,
 	double triptime
 ) {
 	if (ping->prefs.flood) {
@@ -87,7 +86,7 @@ static void	print_received(
 		acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
 		acceptance->ip_header->IP_HEADER_TTL
 	);
-	if (sending_timestamp) {
+	if (ping->sending_timestamp) {
 		printf(" time=%.3f ms", triptime);
 	}
 	printf("\n");
@@ -96,13 +95,12 @@ static void	print_received(
 	print_ip_timestamp(ping, acceptance);
 }
 
-static void	print_epilogue(const t_ping* ping, bool sending_timestamp) {
-	print_stats(ping, sending_timestamp);
+static void	print_epilogue(const t_ping* ping) {
+	print_stats(ping);
 }
 
 // 1つの宛先に対して ping セッションを実行する
 int	ping_pong(t_ping* ping) {
-	const bool	sending_timestamp = ping->prefs.data_size >= sizeof(timeval_t);
 
 	// [初期出力]
 	print_prologue(ping);
@@ -185,8 +183,8 @@ int	ping_pong(t_ping* ping) {
 			}
 
 			// [受信時出力]
-			const double triptime = sending_timestamp ? mark_received(ping, &acceptance) : 0;
-			print_received(ping, &acceptance, sending_timestamp, triptime);
+			const double triptime = mark_received(ping, &acceptance);
+			print_received(ping, &acceptance, triptime);
 		}
 	}
 
@@ -194,7 +192,7 @@ int	ping_pong(t_ping* ping) {
 	signal(SIGINT, SIG_DFL);
 
 	// [最終出力]
-	print_epilogue(ping, sending_timestamp);
+	print_epilogue(ping);
 
 	return 0;
 }
