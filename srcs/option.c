@@ -8,7 +8,6 @@ void	proceed_arguments(t_arguments* args, int n) {
 
 // argv を1つ進める
 #define PRECEDE_NEXT_ARG \
-	parsed += 1;\
 	proceed_arguments(args, 1)
 
 // argv を1つ引数用として進める
@@ -55,7 +54,7 @@ void	proceed_arguments(t_arguments* args, int n) {
 		}\
 		store = rv;\
 		PRECEDE_NEXT_ARG;\
-		continue;\
+		return 0;\
 	}
 
 // フラグ ショートオプションのラッパー
@@ -69,11 +68,50 @@ void	proceed_arguments(t_arguments* args, int n) {
 	if (ft_strcmp(long_opt, str) == 0) {\
 		store = true;\
 		PRECEDE_NEXT_ARG;\
-		continue;\
+		return 0;\
 	}
 
+static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref, const char* arg) {
+	(void)by_root;
+	// ロングオプション解析
+	const char *long_opt = arg + 2;
+
+	PARSE_FLAG_LOPT("verbose", pref->verbose)
+	PARSE_FLAG_LOPT("numeric", pref->dont_resolve_addr_in_ip_ts)
+	PARSE_FLAG_LOPT("ignore-routing", pref->bypass_routing)
+	PARSE_FLAG_LOPT("help", pref->show_usage)
+
+	PARSE_NUMBER_LOPT("count", pref->count, 0, ULONG_MAX)
+	PARSE_NUMBER_LOPT("size", pref->data_size, 0, MAX_ICMP_DATASIZE)
+	PARSE_NUMBER_LOPT("preload", pref->preload, 0, INT_MAX)
+	PARSE_NUMBER_LOPT("timeout", pref->session_timeout_s, 1, INT_MAX)
+	PARSE_NUMBER_LOPT("linger", pref->wait_after_final_request_s, 1, INT_MAX)
+	PARSE_NUMBER_LOPT("ttl", pref->ttl, 1, 255)
+	PARSE_NUMBER_LOPT("tos", pref->tos, 0, 255)
+
+	if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
+		// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
+		PICK_NEXT_ARG;
+		if (ft_strcmp(*args->argv, "tsonly") == 0) {
+			pref->ip_ts_type = IP_TST_TSONLY;
+		} else if (ft_strcmp(*args->argv, "tsaddr") == 0) {
+			pref->ip_ts_type = IP_TST_TSADDR;
+		} else {
+			dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *args->argv);
+			return -1;
+		}
+		PRECEDE_NEXT_ARG;
+		return 0;
+	}
+
+	// 未知のロングオプション
+	dprintf(STDERR_FILENO, "%s: unrecognized option -- '%s'\n",
+		PROGRAM_NAME,
+		arg);
+	return -1;
+}
+
 int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
-	int parsed = 0;
 	while (args->argc > 0) {
 		const char*	arg = *args->argv;
 		DEBUGOUT("argc: %d, arg: %s", args->argc, arg);
@@ -87,42 +125,10 @@ int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 			break;
 		}
 		if (ft_strncmp(arg, "--", 2) == 0) {
-			// ロングオプション解析
-			const char *long_opt = arg + 2;
-
-			PARSE_FLAG_LOPT("verbose", pref->verbose)
-			PARSE_FLAG_LOPT("numeric", pref->dont_resolve_addr_in_ip_ts)
-			PARSE_FLAG_LOPT("ignore-routing", pref->bypass_routing)
-			PARSE_FLAG_LOPT("help", pref->show_usage)
-
-			PARSE_NUMBER_LOPT("count", pref->count, 0, ULONG_MAX)
-			PARSE_NUMBER_LOPT("size", pref->data_size, 0, MAX_ICMP_DATASIZE)
-			PARSE_NUMBER_LOPT("preload", pref->preload, 0, INT_MAX)
-			PARSE_NUMBER_LOPT("timeout", pref->session_timeout_s, 1, INT_MAX)
-			PARSE_NUMBER_LOPT("linger", pref->wait_after_final_request_s, 1, INT_MAX)
-			PARSE_NUMBER_LOPT("ttl", pref->ttl, 1, 255)
-			PARSE_NUMBER_LOPT("tos", pref->tos, 0, 255)
-
-			if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
-				// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
-				PICK_NEXT_ARG;
-				if (ft_strcmp(*args->argv, "tsonly") == 0) {
-					pref->ip_ts_type = IP_TST_TSONLY;
-				} else if (ft_strcmp(*args->argv, "tsaddr") == 0) {
-					pref->ip_ts_type = IP_TST_TSADDR;
-				} else {
-					dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *args->argv);
-					return -1;
-				}
-				PRECEDE_NEXT_ARG;
-				continue;
+			if (parse_longoption(args, by_root, pref, arg)) {
+				return -1;
 			}
-
-			// 未知のロングオプション
-			dprintf(STDERR_FILENO, "%s: unrecognized option -- '%s'\n",
-				PROGRAM_NAME,
-				arg);
-			return -1;
+			continue;
 		}
 
 		// ショートオプション解析
@@ -189,7 +195,7 @@ int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 		}
 		PRECEDE_NEXT_ARG;
 	}
-	return parsed;
+	return 0;
 }
 
 t_preferences	default_preferences(void) {
