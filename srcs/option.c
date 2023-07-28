@@ -1,6 +1,34 @@
 #include "ping.h"
 #include <limits.h>
 
+// [オプション定義]
+// 特殊なものはここでは定義していない.
+// 目的のものがなければ関数 parse_longoption / parse_shortoption も見ること.
+
+// verbose
+#define OPTION_VERBOSE(f)        f('v', "verbose",        pref->verbose)
+// dont resolve address in ip timestamp
+#define OPTION_NUMERIC(f)        f('n', "numeric",        pref->dont_resolve_addr_in_ip_ts)
+// bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
+#define OPTION_IGNORE_ROUTING(f) f('r', "ignore-routing", pref->bypass_routing)
+// show usage
+#define OPTION_HELP(f)           f('?', "help",           pref->show_usage)
+
+// count - 送信するping(ICMP Echo)の数
+#define OPTION_COUNT(f)          f('c', "count",   pref->count, 0, ULONG_MAX)
+// ICMP データサイズ - 送信するICMP Echoのデータサイズ; 16未満を指定するとRTTを計測しなくなる
+#define OPTION_SIZE(f)           f('s', "size",    pref->data_size, 0, MAX_ICMP_DATASIZE)
+// preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
+#define OPTION_PRELOAD(f)        f('l', "preload", pref->preload, 0, INT_MAX)
+// セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する
+#define OPTION_TIMEOUT(f)        f('w', "timeout", pref->session_timeout_s, 1, INT_MAX)
+// 最終送信後タイムアウト - そのセッションの最後のping送信から指定時間経過するとセッションが終了する
+#define OPTION_LINGER(f)         f('W', "linger",  pref->wait_after_final_request_s, 1, INT_MAX)
+// TTL - 送信するIPデータグラムのTTL
+#define OPTION_TTL(f)            f('m', "ttl",     pref->ttl, 1, 255)
+// ToS - 送信するIPデータグラムのToS
+#define OPTION_TOS(f)            f('T', "tos",     pref->tos, 0, 255)
+
 void	proceed_arguments(t_arguments* args, int n) {
 	args->argc -= n;
 	args->argv += n;
@@ -32,44 +60,44 @@ void	proceed_arguments(t_arguments* args, int n) {
 #define EXHAUST_ARG \
 	arg = *arg ? (arg + ft_strlen(arg) - 1) : arg
 
-// フラグ ロングオプションのラッパー
-#define PARSE_FLAG_LOPT(str, store)\
-	if (ft_strcmp(long_opt, str) == 0) {\
-		store = true;\
-		PRECEDE_NEXT_ARG;\
-		return 0;\
-	}
-
-// 整数引数を取るロングオプションのラッパー
-#define PARSE_NUMBER_LOPT(str, store, min, max)\
-	if (ft_strcmp(long_opt, str) == 0) {\
-		PICK_NEXT_ARG;\
-		unsigned long rv;\
-		if (parse_number(*args->argv, &rv, min, max)) {\
-			return -1;\
-		}\
-		store = rv;\
-		PRECEDE_NEXT_ARG;\
-		return 0;\
-	}
-
+// ロングオプション解析
 static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref, const char* arg) {
+	// フラグ ロングオプションのラッパー
+	#define PARSE_FLAG_LOPT(_, str, store)\
+		if (ft_strcmp(long_opt, str) == 0) {\
+			store = true;\
+			PRECEDE_NEXT_ARG;\
+			return 0;\
+		}
+
+	// 整数引数を取るロングオプションのラッパー
+	#define PARSE_NUMBER_LOPT(_, str, store, min, max)\
+		if (ft_strcmp(long_opt, str) == 0) {\
+			PICK_NEXT_ARG;\
+			unsigned long rv;\
+			if (parse_number(*args->argv, &rv, min, max)) {\
+				return -1;\
+			}\
+			store = rv;\
+			PRECEDE_NEXT_ARG;\
+			return 0;\
+		}
+
 	(void)by_root;
-	// ロングオプション解析
 	const char *long_opt = arg + 2;
 
-	PARSE_FLAG_LOPT("verbose", pref->verbose)
-	PARSE_FLAG_LOPT("numeric", pref->dont_resolve_addr_in_ip_ts)
-	PARSE_FLAG_LOPT("ignore-routing", pref->bypass_routing)
-	PARSE_FLAG_LOPT("help", pref->show_usage)
+	OPTION_VERBOSE(PARSE_FLAG_LOPT)
+	OPTION_NUMERIC(PARSE_FLAG_LOPT)
+	OPTION_IGNORE_ROUTING(PARSE_FLAG_LOPT)
+	OPTION_HELP(PARSE_FLAG_LOPT)
 
-	PARSE_NUMBER_LOPT("count", pref->count, 0, ULONG_MAX)
-	PARSE_NUMBER_LOPT("size", pref->data_size, 0, MAX_ICMP_DATASIZE)
-	PARSE_NUMBER_LOPT("preload", pref->preload, 0, INT_MAX)
-	PARSE_NUMBER_LOPT("timeout", pref->session_timeout_s, 1, INT_MAX)
-	PARSE_NUMBER_LOPT("linger", pref->wait_after_final_request_s, 1, INT_MAX)
-	PARSE_NUMBER_LOPT("ttl", pref->ttl, 1, 255)
-	PARSE_NUMBER_LOPT("tos", pref->tos, 0, 255)
+	OPTION_COUNT(PARSE_NUMBER_LOPT)
+	OPTION_SIZE(PARSE_NUMBER_LOPT)
+	OPTION_PRELOAD(PARSE_NUMBER_LOPT)
+	OPTION_TIMEOUT(PARSE_NUMBER_LOPT)
+	OPTION_LINGER(PARSE_NUMBER_LOPT)
+	OPTION_TTL(PARSE_NUMBER_LOPT)
+	OPTION_TOS(PARSE_NUMBER_LOPT)
 
 	if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
 		// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
@@ -91,54 +119,47 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 		PROGRAM_NAME,
 		arg);
 	return -1;
+
+	#undef PARSE_FLAG_LOPT
+	#undef PARSE_NUMBER_LOPT
 }
 
-// フラグ ショートオプションのラッパー
-#define PARSE_FLAG_SOPT(ch, store) case ch: {\
-	store = true;\
-	break;\
-}
 
-// 整数引数を取るショートオプションのラッパー
-#define PARSE_NUMBER_SOPT(ch, store, min, max) case ch: {\
-	PICK_ONE_ARG;\
-	unsigned long rv;\
-	if (parse_number(arg, &rv, min, max)) {\
-		return -1;\
-	}\
-	EXHAUST_ARG;\
-	store = rv;\
-	break;\
-}
-
+// ショートオプション解析
 static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pref, const char* arg) {
-	// ショートオプション解析
+	// フラグ ショートオプションのラッパー
+	#define PARSE_FLAG_SOPT(ch, _, store) case ch: {\
+		store = true;\
+		break;\
+	}
+
+	// 整数引数を取るショートオプションのラッパー
+	#define PARSE_NUMBER_SOPT(ch, _, store, min, max) case ch: {\
+		PICK_ONE_ARG;\
+		unsigned long rv;\
+		if (parse_number(arg, &rv, min, max)) {\
+			return -1;\
+		}\
+		EXHAUST_ARG;\
+		store = rv;\
+		break;\
+	}
+
 	while (*++arg) {
 		switch (*arg) {
 
-			// verbose
-			PARSE_FLAG_SOPT('v', pref->verbose)
-			// dont resolve address in ip timestamp
-			PARSE_FLAG_SOPT('n', pref->dont_resolve_addr_in_ip_ts)
-			// bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
-			PARSE_FLAG_SOPT('r', pref->bypass_routing)
-			// show usage
-			PARSE_FLAG_SOPT('?', pref->show_usage)
+			OPTION_VERBOSE(PARSE_FLAG_SOPT)
+			OPTION_NUMERIC(PARSE_FLAG_SOPT)
+			OPTION_IGNORE_ROUTING(PARSE_FLAG_SOPT)
+			OPTION_HELP(PARSE_FLAG_SOPT)
 
-			// count - 送信するping(ICMP Echo)の数
-			PARSE_NUMBER_SOPT('c', pref->count, 0, ULONG_MAX)
-			// ICMP データサイズ - 送信するICMP Echoのデータサイズ; 16未満を指定するとRTTを計測しなくなる
-			PARSE_NUMBER_SOPT('s', pref->data_size, 0, MAX_ICMP_DATASIZE)
-			// preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
-			PARSE_NUMBER_SOPT('l', pref->preload, 0, INT_MAX)
-			// セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する
-			PARSE_NUMBER_SOPT('w', pref->session_timeout_s, 1, INT_MAX)
-			// 最終送信後タイムアウト - そのセッションの最後のping送信から指定時間経過するとセッションが終了する
-			PARSE_NUMBER_SOPT('W', pref->wait_after_final_request_s, 1, INT_MAX)
-			// TTL - 送信するIPデータグラムのTTL
-			PARSE_NUMBER_SOPT('m', pref->ttl, 1, 255)
-			// ToS - 送信するIPデータグラムのToS
-			PARSE_NUMBER_SOPT('T', pref->tos, 0, 255)
+			OPTION_COUNT(PARSE_NUMBER_SOPT)
+			OPTION_SIZE(PARSE_NUMBER_SOPT)
+			OPTION_PRELOAD(PARSE_NUMBER_SOPT)
+			OPTION_TIMEOUT(PARSE_NUMBER_SOPT)
+			OPTION_LINGER(PARSE_NUMBER_SOPT)
+			OPTION_TTL(PARSE_NUMBER_SOPT)
+			OPTION_TOS(PARSE_NUMBER_SOPT)
 
 			// データパターン - 送信するICMP Echoのデータ部分を埋めるパターン
 			case 'p': {
@@ -176,9 +197,13 @@ static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pre
 	}
 	PRECEDE_NEXT_ARG;
 	return 0;
+
+	#undef PARSE_FLAG_SOPT
+	#undef PARSE_NUMBER_SOPT
 }
 
 int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
+
 	while (args->argc > 0) {
 		const char*	arg = *args->argv;
 		DEBUGOUT("argc: %d, arg: %s", args->argc, arg);
