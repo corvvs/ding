@@ -32,17 +32,13 @@ void	proceed_arguments(t_arguments* args, int n) {
 #define EXHAUST_ARG \
 	arg = *arg ? (arg + ft_strlen(arg) - 1) : arg
 
-// 整数引数を取るショートオプションのラッパー
-#define PARSE_NUMBER_SOPT(ch, store, min, max) case ch: {\
-	PICK_ONE_ARG;\
-	unsigned long rv;\
-	if (parse_number(arg, &rv, min, max)) {\
-		return -1;\
-	}\
-	EXHAUST_ARG;\
-	store = rv;\
-	break;\
-}
+// フラグ ロングオプションのラッパー
+#define PARSE_FLAG_LOPT(str, store)\
+	if (ft_strcmp(long_opt, str) == 0) {\
+		store = true;\
+		PRECEDE_NEXT_ARG;\
+		return 0;\
+	}
 
 // 整数引数を取るロングオプションのラッパー
 #define PARSE_NUMBER_LOPT(str, store, min, max)\
@@ -53,20 +49,6 @@ void	proceed_arguments(t_arguments* args, int n) {
 			return -1;\
 		}\
 		store = rv;\
-		PRECEDE_NEXT_ARG;\
-		return 0;\
-	}
-
-// フラグ ショートオプションのラッパー
-#define PARSE_FLAG_SOPT(ch, store) case ch: {\
-	store = true;\
-	break;\
-}
-
-// フラグ ロングオプションのラッパー
-#define PARSE_FLAG_LOPT(str, store)\
-	if (ft_strcmp(long_opt, str) == 0) {\
-		store = true;\
 		PRECEDE_NEXT_ARG;\
 		return 0;\
 	}
@@ -105,10 +87,95 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 	}
 
 	// 未知のロングオプション
-	dprintf(STDERR_FILENO, "%s: unrecognized option -- '%s'\n",
+	dprintf(STDERR_FILENO, "%s: unrecognized option '%s'\n",
 		PROGRAM_NAME,
 		arg);
 	return -1;
+}
+
+// フラグ ショートオプションのラッパー
+#define PARSE_FLAG_SOPT(ch, store) case ch: {\
+	store = true;\
+	break;\
+}
+
+// 整数引数を取るショートオプションのラッパー
+#define PARSE_NUMBER_SOPT(ch, store, min, max) case ch: {\
+	PICK_ONE_ARG;\
+	unsigned long rv;\
+	if (parse_number(arg, &rv, min, max)) {\
+		return -1;\
+	}\
+	EXHAUST_ARG;\
+	store = rv;\
+	break;\
+}
+
+static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pref, const char* arg) {
+	// ショートオプション解析
+	while (*++arg) {
+		switch (*arg) {
+
+			// verbose
+			PARSE_FLAG_SOPT('v', pref->verbose)
+			// dont resolve address in ip timestamp
+			PARSE_FLAG_SOPT('n', pref->dont_resolve_addr_in_ip_ts)
+			// bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
+			PARSE_FLAG_SOPT('r', pref->bypass_routing)
+			// show usage
+			PARSE_FLAG_SOPT('?', pref->show_usage)
+
+			// count - 送信するping(ICMP Echo)の数
+			PARSE_NUMBER_SOPT('c', pref->count, 0, ULONG_MAX)
+			// ICMP データサイズ - 送信するICMP Echoのデータサイズ; 16未満を指定するとRTTを計測しなくなる
+			PARSE_NUMBER_SOPT('s', pref->data_size, 0, MAX_ICMP_DATASIZE)
+			// preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
+			PARSE_NUMBER_SOPT('l', pref->preload, 0, INT_MAX)
+			// セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する
+			PARSE_NUMBER_SOPT('w', pref->session_timeout_s, 1, INT_MAX)
+			// 最終送信後タイムアウト - そのセッションの最後のping送信から指定時間経過するとセッションが終了する
+			PARSE_NUMBER_SOPT('W', pref->wait_after_final_request_s, 1, INT_MAX)
+			// TTL - 送信するIPデータグラムのTTL
+			PARSE_NUMBER_SOPT('m', pref->ttl, 1, 255)
+			// ToS - 送信するIPデータグラムのToS
+			PARSE_NUMBER_SOPT('T', pref->tos, 0, 255)
+
+			// データパターン - 送信するICMP Echoのデータ部分を埋めるパターン
+			case 'p': {
+				PICK_ONE_ARG;
+				if (parse_pattern(arg, pref->data_pattern, MAX_DATA_PATTERN_LEN)) {
+					return -1;
+				}
+				EXHAUST_ARG;
+				break;
+			}
+
+			// ソースアドレス - 使用するソケットを指定したアドレスにbindする
+			case 'S': {
+				PICK_ONE_ARG;
+				pref->given_source_address = (char*)arg;
+				EXHAUST_ARG;
+				break;
+			}
+
+			// flood - floodモードで実行する
+			case 'f': {
+				if (!by_root) {
+					print_error_by_message("flood ping is not permitted");
+					return -1;
+				}
+				pref->flood = true;
+				break;
+			}
+
+			default:
+				// 未知のオプション
+				dprintf(STDERR_FILENO, "invalid option -- '%c'\n", *arg);
+				return -1;
+		}
+	}
+	PRECEDE_NEXT_ARG;
+	return 0;
 }
 
 int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
@@ -128,72 +195,11 @@ int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 			if (parse_longoption(args, by_root, pref, arg)) {
 				return -1;
 			}
-			continue;
-		}
-
-		// ショートオプション解析
-		while (*++arg) {
-			switch (*arg) {
-
-				// verbose
-				PARSE_FLAG_SOPT('v', pref->verbose)
-				// dont resolve address in ip timestamp
-				PARSE_FLAG_SOPT('n', pref->dont_resolve_addr_in_ip_ts)
-				// bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
-				PARSE_FLAG_SOPT('r', pref->bypass_routing)
-				// show usage
-				PARSE_FLAG_SOPT('?', pref->show_usage)
-
-				// count - 送信するping(ICMP Echo)の数
-				PARSE_NUMBER_SOPT('c', pref->count, 0, ULONG_MAX)
-				// ICMP データサイズ - 送信するICMP Echoのデータサイズ; 16未満を指定するとRTTを計測しなくなる
-				PARSE_NUMBER_SOPT('s', pref->data_size, 0, MAX_ICMP_DATASIZE)
-				// preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
-				PARSE_NUMBER_SOPT('l', pref->preload, 0, INT_MAX)
-				// セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する
-				PARSE_NUMBER_SOPT('w', pref->session_timeout_s, 1, INT_MAX)
-				// 最終送信後タイムアウト - そのセッションの最後のping送信から指定時間経過するとセッションが終了する
-				PARSE_NUMBER_SOPT('W', pref->wait_after_final_request_s, 1, INT_MAX)
-				// TTL - 送信するIPデータグラムのTTL
-				PARSE_NUMBER_SOPT('m', pref->ttl, 1, 255)
-				// ToS - 送信するIPデータグラムのToS
-				PARSE_NUMBER_SOPT('T', pref->tos, 0, 255)
-
-				// データパターン - 送信するICMP Echoのデータ部分を埋めるパターン
-				case 'p': {
-					PICK_ONE_ARG;
-					if (parse_pattern(arg, pref->data_pattern, MAX_DATA_PATTERN_LEN)) {
-						return -1;
-					}
-					EXHAUST_ARG;
-					break;
-				}
-
-				// ソースアドレス - 使用するソケットを指定したアドレスにbindする
-				case 'S': {
-					PICK_ONE_ARG;
-					pref->given_source_address = (char*)arg;
-					EXHAUST_ARG;
-					break;
-				}
-
-				// flood - floodモードで実行する
-				case 'f': {
-					if (!by_root) {
-						print_error_by_message("flood ping is not permitted");
-						return -1;
-					}
-					pref->flood = true;
-					break;
-				}
-
-				default:
-					// 未知のオプション
-					dprintf(STDERR_FILENO, "invalid option -- '%c'\n", *arg);
-					return -1;
+		} else {
+			if (parse_shortoption(args, by_root, pref, arg)) {
+				return -1;
 			}
 		}
-		PRECEDE_NEXT_ARG;
 	}
 	return 0;
 }
