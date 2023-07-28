@@ -64,6 +64,14 @@ void	proceed_arguments(t_arguments* args, int n) {
 	break;\
 }
 
+// フラグ ロングオプションのラッパー
+#define PARSE_FLAG_LOPT(str, store)\
+	if (ft_strcmp(long_opt, str) == 0) {\
+		store = true;\
+		PRECEDE_NEXT_ARG;\
+		continue;\
+	}
+
 int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 	int parsed = 0;
 	while (args->argc > 0) {
@@ -82,20 +90,18 @@ int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 			// ロングオプション解析
 			const char *long_opt = arg + 2;
 
-			// --count: 送信数; -c と等価
+			PARSE_FLAG_LOPT("verbose", pref->verbose)
+			PARSE_FLAG_LOPT("numeric", pref->dont_resolve_addr_in_ip_ts)
+			PARSE_FLAG_LOPT("ignore-routing", pref->bypass_routing)
+			PARSE_FLAG_LOPT("help", pref->show_usage)
+
 			PARSE_NUMBER_LOPT("count", pref->count, 0, ULONG_MAX)
-			// --ttl: TTL; -m と等価
-			PARSE_NUMBER_LOPT("ttl", pref->ttl, 1, 255)
-			// --tos: TOS; -T と等価
-			PARSE_NUMBER_LOPT("tos", pref->tos, 0, 255)
-			// --timeout: 最終送信後タイムアウト; -w と等価
-			PARSE_NUMBER_LOPT("timeout", pref->session_timeout_s, 1, INT_MAX)
-			// --linger: 開始後タイムアウト; -W と等価
-			PARSE_NUMBER_LOPT("linger", pref->wait_after_final_request_s, 1, INT_MAX)
-			// --preload: 初期送信数; -l と等価
-			PARSE_NUMBER_LOPT("preload", pref->preload, 0, INT_MAX)
-			// --size: ICMP ペイロードサイズ; -s と等価
 			PARSE_NUMBER_LOPT("size", pref->data_size, 0, MAX_ICMP_DATASIZE)
+			PARSE_NUMBER_LOPT("preload", pref->preload, 0, INT_MAX)
+			PARSE_NUMBER_LOPT("timeout", pref->session_timeout_s, 1, INT_MAX)
+			PARSE_NUMBER_LOPT("linger", pref->wait_after_final_request_s, 1, INT_MAX)
+			PARSE_NUMBER_LOPT("ttl", pref->ttl, 1, 255)
+			PARSE_NUMBER_LOPT("tos", pref->tos, 0, 255)
 
 			if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
 				// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
