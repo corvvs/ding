@@ -126,31 +126,31 @@ static int	validate_received_icmp_echo_reply(
 	return 0;
 }
 
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance) {
+bool	assimilate(const t_ping* ping, t_acceptance* acceptance) {
 	const socket_address_in_t* addr_to = &ping->target.addr_to;
 	// debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
 	if (validate_received_raw_data(acceptance->received_len)) {
-		return 1;
+		return false;
 	}
 	flip_endian_ip(acceptance->recv_buffer);
 	// debug_ip_header(acceptance->recv_buffer);
 	if (validate_received_ip_preliminary(acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
-		return 1;
+		return false;
 	}
 	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
 	const size_t		ip_header_len = acceptance->ip_header->IP_HEADER_HL * 4;
 	acceptance->icmp_whole_len = acceptance->received_len  - ip_header_len;
 	acceptance->icmp_header = (icmp_header_t*)(acceptance->recv_buffer + ip_header_len);
 	if (validate_received_icmp_preliminary(ping, acceptance)) {
-		return 1;
+		return false;
 	}
 	if (validate_received_ip_echo_reply((ip_header_t*)acceptance->recv_buffer, addr_to)) {
-		return 1;
+		return false;
 	}
 	if (validate_received_icmp_echo_reply(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
-		return 1;
+		return false;
 	}
 	flip_endian_icmp(acceptance->icmp_header);
 	// debug_icmp_header(acceptance->icmp_header);
-	return 0;
+	return true;
 }
