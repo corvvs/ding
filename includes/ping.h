@@ -139,6 +139,8 @@ typedef struct s_preferences
 	bool		bypass_routing;
 	// 受信したパケットを16進ダンプする
 	bool		hexdump_received;
+	// 送信したパケットを16進ダンプする
+	bool		hexdump_sent;
 
 	// これが有効な場合, pingを実行せずヘルプを表示して終了する
 	bool		show_usage;
