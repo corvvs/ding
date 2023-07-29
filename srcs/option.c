@@ -212,7 +212,7 @@ int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 			DEBUGERR("%s", "argv has an NULL");
 			return -1;
 		}
-		if (*arg != '-') {
+		if (arg[0] != '-' || arg[1] == '\0') {
 			// オプションではない
 			break;
 		}
