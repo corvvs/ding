@@ -30,6 +30,9 @@ t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 	}
 	acceptance->epoch_received = get_current_time();
 	acceptance->received_len = rv;
+	if (ping->prefs.hexdump_received) {
+		debug_hexdump("received message", acceptance->recv_buffer, acceptance->received_len);
+	}
 
 	if (!assimilate_echo_reply(ping, acceptance)) {
 		return RR_UNACCEPTABLE;
