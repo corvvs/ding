@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
 		.prefs = pref,
 		// ICMP データサイズが timeval_t のサイズ以上なら, ICMP Echo にタイムスタンプを載せる
 		.sending_timestamp = pref.data_size >= sizeof(timeval_t),
+		.socket_is_dgram = socket_is_dgram,
 	};
 	run_ping_sessions(&args, &ping);
 	close(ping.socket_fd); // 社会人としてのマナー

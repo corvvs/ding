@@ -99,11 +99,14 @@ static int	validate_received_icmp_echo_reply(
 	icmp_header_t*	received_icmp_header = (icmp_header_t*)received_icmp;
 
 	// CHECK: is ID correct?
-	uint16_t	received_id = received_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_ID;
-	received_id = SWAP_NEEDED(received_id);
-	if (received_id != ping->icmp_header_id) {
-		DEBUGERR("received_id != my_id: %u != %u", received_id, ping->icmp_header_id);
-		return -1;
+	// データグラムソケットを使っている場合, こちらが指定したIDをカーネルが書き換えてしまうので, このチェックは飛ばす
+	if (!ping->socket_is_dgram) {
+		uint16_t	received_id = received_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_ID;
+		received_id = SWAP_NEEDED(received_id);
+		if (received_id != ping->icmp_header_id) {
+			DEBUGERR("received_id != my_id: %u != %u", received_id, ping->icmp_header_id);
+			return -1;
+		}
 	}
 
 	// CHECK: checksum is good?
@@ -125,19 +128,26 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	if (validate_received_raw_data(acceptance->received_len)) {
 		return false;
 	}
-	flip_endian_ip(acceptance->recv_buffer);
-	if (validate_received_ip_preliminary(acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
-		return false;
+	if (!ping->socket_is_dgram) {
+		// NOTE: データグラムソケットを使っている場合IPヘッダを受信できないので, ここのチェックは飛ばす
+		flip_endian_ip(acceptance->recv_buffer);
+		if (validate_received_ip_preliminary(acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
+			return false;
+		}
 	}
 	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
-	const size_t		ip_header_len = acceptance->ip_header->IP_HEADER_HL * 4;
+	const size_t		ip_header_len = ping->socket_is_dgram
+		? 0
+		: acceptance->ip_header->IP_HEADER_HL * 4;
 	acceptance->icmp_whole_len = acceptance->received_len  - ip_header_len;
 	acceptance->icmp_header = (icmp_header_t*)(acceptance->recv_buffer + ip_header_len);
 	if (validate_received_icmp_preliminary(ping, acceptance)) {
 		return false;
 	}
-	if (validate_received_ip_echo_reply((ip_header_t*)acceptance->recv_buffer, addr_to)) {
-		return false;
+	if (!ping->socket_is_dgram) {
+		if (validate_received_ip_echo_reply((ip_header_t*)acceptance->recv_buffer, addr_to)) {
+			return false;
+		}
 	}
 	if (validate_received_icmp_echo_reply(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
 		return false;
