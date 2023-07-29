@@ -181,6 +181,8 @@ typedef struct s_ping
 	t_preferences	prefs;
 	// ICMPデータグラムにタイムスタンプを含めるか否か
 	bool			sending_timestamp;
+	// Rawソケットではなくデータグラムソケットを使っているかどうか
+	bool			socket_is_dgram;
 
 	// 宛先に依存するパラメータ
 	t_session		target;
@@ -211,7 +213,7 @@ const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
 
 // socket.c
-int create_icmp_socket(const t_preferences* prefs);
+int create_icmp_socket(bool* socket_is_dgram, const t_preferences* prefs);
 
 // ping_pong.c
 int	ping_pong(t_ping* ping);

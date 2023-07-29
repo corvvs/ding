@@ -68,12 +68,23 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 }
 
 // ICMPソケットを作成する
-int create_icmp_socket(const t_preferences* prefs) {
+int create_icmp_socket(bool* socket_is_dgram, const t_preferences* prefs) {
 	// ソケット生成
+	errno = 0;
 	int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (sock < 0) {
-		print_special_error_by_errno("socket");
-		return -1;
+		if (errno != EPERM && errno != EACCES) {
+			print_special_error_by_errno("socket");
+			return -1;
+		}
+		// SOCK_RAW で失敗した場合は SOCK_DGRAM で試す
+		DEBUGINFO("%s", "SOCK_RAW failed; try SOCK_DGRAM");
+		sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+		if (sock < 0) {
+			print_special_error_by_errno("socket");
+			return -1;
+		}
+		*socket_is_dgram = true;
 	}
 
 	if (apply_socket_options_by_prefs(prefs, sock)) {

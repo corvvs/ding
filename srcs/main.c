@@ -15,8 +15,8 @@ static int	set_preference(t_arguments* args, t_preferences* pref) {
 	return 0;
 }
 
-static int	create_socket(const t_preferences* pref) {
-	int sock = create_icmp_socket(pref);
+static int	create_socket(bool* socket_is_dgram, const t_preferences* pref) {
+	int sock = create_icmp_socket(socket_is_dgram, pref);
 	if (sock < 0) {
 		return sock;
 	}
@@ -70,7 +70,8 @@ int main(int argc, char **argv) {
 	}
 
 	// ソケットは全宛先で使い回すので最初に生成する
-	int sock = create_socket(&pref);
+	bool	socket_is_dgram = false;
+	int sock = create_socket(&socket_is_dgram, &pref);
 	if (sock < 0) {
 		return STATUS_GENERIC_FAILED;
 	}
@@ -81,7 +82,9 @@ int main(int argc, char **argv) {
 		.prefs = pref,
 		// ICMP データサイズが timeval_t のサイズ以上なら, ICMP Echo にタイムスタンプを載せる
 		.sending_timestamp = pref.data_size >= sizeof(timeval_t),
+		.socket_is_dgram = socket_is_dgram,
 	};
 	run_ping_sessions(&args, &ping);
+	close(ping.socket_fd); // 社会人としてのマナー
 	DEBUGWARN("%s", "finished");
 }
