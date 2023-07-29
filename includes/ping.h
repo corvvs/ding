@@ -137,6 +137,8 @@ typedef struct s_preferences
 	char*		given_source_address;
 	// ルーティングを無視してパケットを送信する
 	bool		bypass_routing;
+	// 受信したパケットを16進ダンプする
+	bool		hexdump_received;
 
 	// これが有効な場合, pingを実行せずヘルプを表示して終了する
 	bool		show_usage;

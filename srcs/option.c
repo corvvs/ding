@@ -6,13 +6,15 @@
 // 目的のものがなければ関数 parse_longoption / parse_shortoption も見ること.
 
 // verbose
-#define OPTION_VERBOSE(f)        f('v', "verbose",        pref->verbose)
+#define OPTION_VERBOSE(f)          f('v', "verbose",        pref->verbose)
 // dont resolve address in ip timestamp
-#define OPTION_NUMERIC(f)        f('n', "numeric",        pref->dont_resolve_addr_in_ip_ts)
+#define OPTION_NUMERIC(f)          f('n', "numeric",        pref->dont_resolve_addr_in_ip_ts)
 // bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
-#define OPTION_IGNORE_ROUTING(f) f('r', "ignore-routing", pref->bypass_routing)
+#define OPTION_IGNORE_ROUTING(f)   f('r', "ignore-routing", pref->bypass_routing)
+// hexdump received
+#define OPTION_HEXDUMP_RECEIVED(f) f('x', "hexdump",        pref->hexdump_received)
 // show usage
-#define OPTION_HELP(f)           f('?', "help",           pref->show_usage)
+#define OPTION_HELP(f)             f('?', "help",           pref->show_usage)
 
 // count - 送信するping(ICMP Echo)の数
 #define OPTION_COUNT(f)          f('c', "count",   pref->count, 0, ULONG_MAX)
@@ -101,6 +103,7 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 	OPTION_VERBOSE(PARSE_FLAG_LOPT)
 	OPTION_NUMERIC(PARSE_FLAG_LOPT)
 	OPTION_IGNORE_ROUTING(PARSE_FLAG_LOPT)
+	OPTION_HEXDUMP_RECEIVED(PARSE_FLAG_LOPT)
 	OPTION_HELP(PARSE_FLAG_LOPT)
 
 	OPTION_COUNT(PARSE_NUMBER_LOPT)
@@ -160,6 +163,7 @@ static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pre
 			OPTION_VERBOSE(PARSE_FLAG_SOPT)
 			OPTION_NUMERIC(PARSE_FLAG_SOPT)
 			OPTION_IGNORE_ROUTING(PARSE_FLAG_SOPT)
+			OPTION_HEXDUMP_RECEIVED(PARSE_FLAG_SOPT)
 			OPTION_HELP(PARSE_FLAG_SOPT)
 
 			OPTION_COUNT(PARSE_NUMBER_SOPT)

@@ -3,14 +3,21 @@ extern int	g_is_little_endian;
 
 void	debug_hexdump(const char* label, const void* mem, size_t len) {
 	uint8_t*	vmem = (uint8_t*) mem;
-	dprintf(STDERR_FILENO, "%s:\n", label);
-	for (size_t i = 0; i < len; ++i) {
+	size_t		dump_len = len > 128 ? 128 : len;
+	printf("[%s] dumping %zu of %zu bytes\n", label, dump_len, len);
+	for (size_t i = 0; i < dump_len; ++i) {
 		if (i != 0 && i % 16 == 0) {
-			dprintf(STDERR_FILENO, "\n");
+			printf("\n");
 		}
-		dprintf(STDERR_FILENO, "%02x ", vmem[i]);
+		if (i % 16 == 0) {
+			printf("%#06zx:  ", i);
+		}
+		printf("%02x", vmem[i]);
+		if (i % 2 == 1) {
+			printf(" ");
+		}
 	}
-	dprintf(STDERR_FILENO, "\n");
+	printf("\n");
 }
 
 void	debug_msg_flags(const struct msghdr* msg) {

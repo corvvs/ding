@@ -122,7 +122,6 @@ static int	validate_received_icmp_echo_reply(
 
 bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	const socket_address_in_t* addr_to = &ping->target.addr_to;
-	debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
 	if (validate_received_raw_data(acceptance->received_len)) {
 		return false;
 	}
