@@ -274,7 +274,11 @@ void	debug_msg_flags(const struct msghdr* msg);
 void	debug_ip_header(const void* mem);
 void	debug_icmp_header(const void* mem);
 
+
+// エンディアン変換を行う.
+// 引数 value のサイズ(1, 2, 4, 8)に応じて変換関数を自動選択する.
 # define SWAP_BYTE(value) (sizeof(value) < 2 ? (value) : sizeof(value) < 4 ? swap_2byte(value) : sizeof(value) < 8 ? swap_4byte(value) : swap_8byte(value))
+
 // エンディアン変換が必要(=環境のエンディアンがネットワークバイトオーダーではない)ならエンディアン変換を行う.
 // (返り値が uint64_t になることに注意)
 // (使用するファイルで extern int	g_is_little_endian; すること)
