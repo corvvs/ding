@@ -9,7 +9,7 @@ static void	print_time_exceeded_line(const ip_header_t* ip_header, size_t origin
 	);
 }
 
-void	print_unexpected_icmp(t_acceptance* acceptance) {
+void	print_unexpected_icmp(const t_ping* ping, t_acceptance* acceptance) {
 	const ip_header_t*	ip_header = acceptance->ip_header;
 	icmp_header_t*		icmp_header = acceptance->icmp_header;
 	const size_t		icmp_whole_len = acceptance->icmp_whole_len;
@@ -25,8 +25,9 @@ void	print_unexpected_icmp(t_acceptance* acceptance) {
 			if (!is_valid_icmp_checksum(original_icmp, original_icmp_whole_len)) {
 				dprintf(STDERR_FILENO, "warning: ICMP checksum is invalid\n");
 			}
-
-			flip_endian_ip(original_ip);
+			if (!ping->received_ipheader_modified) {
+				flip_endian_ip(original_ip);
+			}
 			flip_endian_icmp(original_icmp);
 
 			print_time_exceeded_line(ip_header, original_icmp_whole_len);

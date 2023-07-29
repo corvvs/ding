@@ -21,6 +21,7 @@ static int	validate_received_raw_data(size_t recv_size) {
 
 // IPレベルのバリデーション
 static int	validate_received_ip_preliminary(
+	const t_ping* ping,
 	size_t recv_size,
 	const ip_header_t* received_ip_header
 ) {
@@ -32,7 +33,9 @@ static int	validate_received_ip_preliminary(
 	}
 
 	// CHECK: 受信サイズ == トータルサイズ であることを確認する
-	if (recv_size != received_ip_header->IP_HEADER_LEN) {
+	// OSがIPヘッダの Total Length を勝手に変えてきた時に帳尻を合わせるためのオフセット
+	const size_t header_totalsize_offset = ping->received_ipheader_modified ? sizeof(ip_header_t) : 0;
+	if (recv_size != received_ip_header->IP_HEADER_LEN + header_totalsize_offset) {
 		DEBUGERR("size doesn't match: rv: %zu(%zx), tot_len: %u", recv_size, recv_size, received_ip_header->IP_HEADER_LEN);
 		return -1;
 	}
@@ -61,7 +64,7 @@ static int	validate_received_ip_echo_reply(
 ) {
 
 	// CHECK: IP: Reply の送信元 == Request の送信先
-	const uint32_t	address_request_to = SWAP_NEEDED(addr_to->sin_addr.s_addr);
+	const uint32_t	address_request_to = addr_to->sin_addr.s_addr;
 	const uint32_t	address_reply_from = serialize_address(&received_ip_header->IP_HEADER_SRC);
 	DEBUGOUT("address_request_to: %s", stringify_serialized_address(address_request_to));
 	DEBUGOUT("address_reply_from: %s", stringify_address(&received_ip_header->IP_HEADER_SRC));
@@ -83,7 +86,7 @@ static int	validate_received_icmp_preliminary(
 		DEBUGOUT("received_icmp_header->ICMP_HEADER_TYPE != 0: %u != 0", received_icmp_header->ICMP_HEADER_TYPE);
 
 		// 特定のTypeについてはフォローアップを行う
-		print_unexpected_icmp(acceptance);
+		print_unexpected_icmp(ping, acceptance);
 		return -1;
 	}
 
@@ -100,7 +103,7 @@ static int	validate_received_icmp_echo_reply(
 
 	// CHECK: is ID correct?
 	// データグラムソケットを使っている場合, こちらが指定したIDをカーネルが書き換えてしまうので, このチェックは飛ばす
-	if (!ping->socket_is_dgram) {
+	if (!ping->unreceivable_ipheader) {
 		uint16_t	received_id = received_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_ID;
 		received_id = SWAP_NEEDED(received_id);
 		if (received_id != ping->icmp_header_id) {
@@ -128,15 +131,17 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	if (validate_received_raw_data(acceptance->received_len)) {
 		return false;
 	}
-	if (!ping->socket_is_dgram) {
+	if (!ping->unreceivable_ipheader) {
 		// NOTE: データグラムソケットを使っている場合IPヘッダを受信できないので, ここのチェックは飛ばす
-		flip_endian_ip(acceptance->recv_buffer);
-		if (validate_received_ip_preliminary(acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
+		if (!ping->received_ipheader_modified) {
+			flip_endian_ip(acceptance->recv_buffer);
+		}
+		if (validate_received_ip_preliminary(ping, acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
 			return false;
 		}
 	}
 	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
-	const size_t		ip_header_len = ping->socket_is_dgram
+	const size_t		ip_header_len = ping->unreceivable_ipheader
 		? 0
 		: acceptance->ip_header->IP_HEADER_HL * 4;
 	acceptance->icmp_whole_len = acceptance->received_len  - ip_header_len;
@@ -144,7 +149,7 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	if (validate_received_icmp_preliminary(ping, acceptance)) {
 		return false;
 	}
-	if (!ping->socket_is_dgram) {
+	if (!ping->unreceivable_ipheader) {
 		if (validate_received_ip_echo_reply((ip_header_t*)acceptance->recv_buffer, addr_to)) {
 			return false;
 		}

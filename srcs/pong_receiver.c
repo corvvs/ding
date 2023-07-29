@@ -11,6 +11,7 @@ t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 	iov_received.iov_base = acceptance->recv_buffer;
 	iov_received.iov_len = acceptance->recv_buffer_len;
 	int rv = recvmsg(ping->socket_fd, &msg_received, 0);
+	DEBUGOUT("recvmsg rv: %d", rv);
 	if (rv < 0) {
 		if (errno == EAGAIN) {
 			DEBUGOUT("recvmsg: timed out: %d", errno);
