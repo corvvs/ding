@@ -13,6 +13,8 @@
 #define OPTION_IGNORE_ROUTING(f)   f('r', "ignore-routing", pref->bypass_routing)
 // hexdump received
 #define OPTION_HEXDUMP_RECEIVED(f) f('x', "hexdump",        pref->hexdump_received)
+// hexdump sent
+#define OPTION_HEXDUMP_SENT(f)     f('X', "hexdump-sent",   pref->hexdump_sent)
 // show usage
 #define OPTION_HELP(f)             f('?', "help",           pref->show_usage)
 
@@ -104,6 +106,7 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 	OPTION_NUMERIC(PARSE_FLAG_LOPT)
 	OPTION_IGNORE_ROUTING(PARSE_FLAG_LOPT)
 	OPTION_HEXDUMP_RECEIVED(PARSE_FLAG_LOPT)
+	OPTION_HEXDUMP_SENT(PARSE_FLAG_LOPT)
 	OPTION_HELP(PARSE_FLAG_LOPT)
 
 	OPTION_COUNT(PARSE_NUMBER_LOPT)
@@ -164,6 +167,7 @@ static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pre
 			OPTION_NUMERIC(PARSE_FLAG_SOPT)
 			OPTION_IGNORE_ROUTING(PARSE_FLAG_SOPT)
 			OPTION_HEXDUMP_RECEIVED(PARSE_FLAG_SOPT)
+			OPTION_HEXDUMP_SENT(PARSE_FLAG_SOPT)
 			OPTION_HELP(PARSE_FLAG_SOPT)
 
 			OPTION_COUNT(PARSE_NUMBER_SOPT)
