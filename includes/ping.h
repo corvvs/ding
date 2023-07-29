@@ -179,10 +179,12 @@ typedef struct s_ping
 	uint16_t		icmp_header_id;
 	// 設定
 	t_preferences	prefs;
-	// ICMPデータグラムにタイムスタンプを含めるか否か
+	// ICMPデータグラムにタイムスタンプを含める時に立つフラグ
 	bool			sending_timestamp;
-	// Rawソケットではなくデータグラムソケットを使っているかどうか
-	bool			socket_is_dgram;
+	// 受信パケットのIPヘッダにアクセスできない時に立つフラグ
+	bool			unreceivable_ipheader;
+	// 受信パケットのIPヘッダがカーネルによって書き換えられる時に立つフラグ
+	bool			received_ipheader_modified;
 
 	// 宛先に依存するパラメータ
 	t_session		target;
@@ -213,7 +215,7 @@ const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
 
 // socket.c
-int create_icmp_socket(bool* socket_is_dgram, const t_preferences* prefs);
+int create_icmp_socket(bool* unreceivable_ipheader, const t_preferences* prefs);
 
 // ping_pong.c
 int	ping_pong(t_ping* ping);
@@ -242,7 +244,7 @@ void		construct_icmp_datagram(
 );
 
 // unexpected_icmp.c
-void	print_unexpected_icmp(t_acceptance* acceptance);
+void	print_unexpected_icmp(const t_ping* ping, t_acceptance* acceptance);
 
 // validator.c
 bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);

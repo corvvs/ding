@@ -68,7 +68,7 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 }
 
 // ICMPソケットを作成する
-int create_icmp_socket(bool* socket_is_dgram, const t_preferences* prefs) {
+int create_icmp_socket(bool* unreceivable_ipheader, const t_preferences* prefs) {
 	// ソケット生成
 	errno = 0;
 	int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -84,7 +84,11 @@ int create_icmp_socket(bool* socket_is_dgram, const t_preferences* prefs) {
 			print_special_error_by_errno("socket");
 			return -1;
 		}
-		*socket_is_dgram = true;
+#ifdef __APPLE__
+		(void)unreceivable_ipheader;
+#else
+		*unreceivable_ipheader = true;
+#endif
 	}
 
 	if (apply_socket_options_by_prefs(prefs, sock)) {

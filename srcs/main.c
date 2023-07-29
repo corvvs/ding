@@ -15,8 +15,8 @@ static int	set_preference(t_arguments* args, t_preferences* pref) {
 	return 0;
 }
 
-static int	create_socket(bool* socket_is_dgram, const t_preferences* pref) {
-	int sock = create_icmp_socket(socket_is_dgram, pref);
+static int	create_socket(bool* unreceivable_ipheader, const t_preferences* pref) {
+	int sock = create_icmp_socket(unreceivable_ipheader, pref);
 	if (sock < 0) {
 		return sock;
 	}
@@ -70,8 +70,8 @@ int main(int argc, char **argv) {
 	}
 
 	// ソケットは全宛先で使い回すので最初に生成する
-	bool	socket_is_dgram = false;
-	int sock = create_socket(&socket_is_dgram, &pref);
+	bool	unreceivable_ipheader = false;
+	int sock = create_socket(&unreceivable_ipheader, &pref);
 	if (sock < 0) {
 		return STATUS_GENERIC_FAILED;
 	}
@@ -82,8 +82,11 @@ int main(int argc, char **argv) {
 		.prefs = pref,
 		// ICMP データサイズが timeval_t のサイズ以上なら, ICMP Echo にタイムスタンプを載せる
 		.sending_timestamp = pref.data_size >= sizeof(timeval_t),
-		.socket_is_dgram = socket_is_dgram,
+		.unreceivable_ipheader = unreceivable_ipheader,
 	};
+#ifdef __APPLE__
+	ping.received_ipheader_modified = true;
+#endif
 	run_ping_sessions(&args, &ping);
 	close(ping.socket_fd); // 社会人としてのマナー
 	DEBUGWARN("%s", "finished");
