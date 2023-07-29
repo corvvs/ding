@@ -70,19 +70,31 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 			return 0;\
 		}
 
-	// 整数引数を取るロングオプションのラッパー
-	#define PARSE_NUMBER_LOPT(_, str, store, min, max)\
-		if (ft_strcmp(long_opt, str) == 0) {\
-			PICK_NEXT_ARG;\
-			unsigned long rv;\
-			if (parse_number(*args->argv, &rv, min, max)) {\
-				return -1;\
+	#define PARSE_ARGUMENT_LOPT(str, block) {\
+		int tail = ft_starts_with(long_opt, str);\
+		if (tail >= 0) {\
+			if (long_opt[tail] == '=') {\
+				long_opt += tail + 1;\
+			} else {\
+				PICK_NEXT_ARG;\
+				long_opt = *args->argv;\
 			}\
-			store = rv;\
+			block\
 			PRECEDE_NEXT_ARG;\
 			return 0;\
-		}
+		}\
+	}
 
+	// 整数引数を取るロングオプションのラッパー
+	#define PARSE_NUMBER_LOPT(_, str, store, min, max) PARSE_ARGUMENT_LOPT(str, {\
+		unsigned long rv;\
+		if (parse_number(long_opt, &rv, min, max)) {\
+			return -1;\
+		}\
+		store = rv;\
+	})
+
+	// -- ここから本体 --
 	(void)by_root;
 	const char *long_opt = arg + 2;
 
@@ -99,20 +111,16 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 	OPTION_TTL(PARSE_NUMBER_LOPT)
 	OPTION_TOS(PARSE_NUMBER_LOPT)
 
-	if (ft_strcmp(long_opt, "ip-timestamp") == 0) {
-		// --ip-timestamp: IPヘッダにタイムスタンプオプションを入れる
-		PICK_NEXT_ARG;
-		if (ft_strcmp(*args->argv, "tsonly") == 0) {
+	PARSE_ARGUMENT_LOPT("ip-timestamp", {
+		if (ft_strcmp(long_opt, "tsonly") == 0) {
 			pref->ip_ts_type = IP_TST_TSONLY;
-		} else if (ft_strcmp(*args->argv, "tsaddr") == 0) {
+		} else if (ft_strcmp(long_opt, "tsaddr") == 0) {
 			pref->ip_ts_type = IP_TST_TSADDR;
 		} else {
-			dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, *args->argv);
+			dprintf(STDERR_FILENO, "%s: unsupported timestamp type: %s\n", PROGRAM_NAME, long_opt);
 			return -1;
 		}
-		PRECEDE_NEXT_ARG;
-		return 0;
-	}
+	})
 
 	// 未知のロングオプション
 	dprintf(STDERR_FILENO, "%s: unrecognized option '%s'\n",
@@ -145,6 +153,7 @@ static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pre
 		break;\
 	}
 
+	// -- ここから本体 --
 	while (*++arg) {
 		switch (*arg) {
 

@@ -16,6 +16,7 @@ FUNCS	=	ft_strlen\
 			ft_strlcpy\
 			ft_strlcat\
 			ft_strchr\
+			ft_starts_with\
 			ft_strrchr\
 			ft_strncmp\
 			ft_strnstr\
