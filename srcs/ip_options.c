@@ -3,15 +3,9 @@ extern int	g_is_little_endian;
 
 static char*	resolve_host(uint32_t addr) {
 	socket_address_in_t	sa;
-	static char			node[NI_MAXHOST];
+	static char			hostname[NI_MAXHOST];
 	char				addr_str[16];
 
-	sprintf(addr_str, "%u.%u.%u.%u",
-		(addr >> 24) & 0xff,
-		(addr >> 16) & 0xff,
-		(addr >> 8) & 0xff,
-		(addr >> 0) & 0xff
-	);
 	ft_memset(&sa, 0, sizeof(socket_address_in_t));
 	sa.sin_family = AF_INET;
 	errno = 0;
@@ -20,11 +14,20 @@ static char*	resolve_host(uint32_t addr) {
 		return NULL;
 	}
 	errno = 0;
-	if (getnameinfo((struct sockaddr*)&sa, sizeof(struct sockaddr_in), node, sizeof(node), NULL, 0, NI_NAMEREQD)) {
+	int rv = getnameinfo(
+		(struct sockaddr*)&sa,
+		sizeof(struct sockaddr_in),
+		hostname,
+		sizeof(hostname),
+		NULL,
+		0,
+		NI_NAMEREQD
+	);
+	if (rv) {
 		DEBUGWARN("failed to getnameinfo for %s: %s", addr_str, strerror(errno));
 		return NULL;
 	}
-	return node;
+	return hostname;
 }
 
 static void	print_address_within_timestamp(uint32_t addr, bool try_to_resolve_host) {
@@ -40,34 +43,27 @@ static void	print_address_within_timestamp(uint32_t addr, bool try_to_resolve_ho
 	printf("\t%s", stringify_address((const void*)&addr));
 }
 
-// IPタイムスタンプを表示する
-// ASSERT: IPタイムスタンプはオプションの先頭にある
-void	print_ip_timestamp(
-	const t_ping* ping,
-	const t_acceptance* acceptance
-) {
-	(void)ping;
+bool	validate_ip_timestamp_option(const t_acceptance* acceptance) {
 	const size_t	ip_header_len = acceptance->ip_header->IP_HEADER_HL * 4;
 	// IPヘッダオプションがない -> sayonara
-	if (ip_header_len <= MIN_IPV4_HEADER_SIZE) { return; }
+	if (ip_header_len <= MIN_IPV4_HEADER_SIZE) { return false; }
 	const size_t	ip_header_options_capacity = ip_header_len - MIN_IPV4_HEADER_SIZE;
 	// IPヘッダのあまりサイズが4以下 -> sayonara
-	if (ip_header_options_capacity <= 4) { return; }
+	if (ip_header_options_capacity <= 4) { return false; }
 	const uint8_t*	ip_header_options = (void*)acceptance->ip_header + MIN_IPV4_HEADER_SIZE;
 	// オプションの種類がIPタイムスタンプでない -> sayonara
-	if (ip_header_options[IPOPT_OPTVAL] != IPOPT_TS) { return; }
+	if (ip_header_options[IPOPT_OPTVAL] != IPOPT_TS) { return false; }
 	const uint8_t	type = ip_header_options[IPOPT_POS_OV_FLG];
 	// タイムスタンプ種別がサポートされたものではない -> sayonara
-	if (type != IPOPT_TS_TSONLY && type != IPOPT_TS_TSANDADDR) { return; }
+	if (type != IPOPT_TS_TSONLY && type != IPOPT_TS_TSANDADDR) { return false; }
 	const size_t	unit_size = type == IPOPT_TS_TSONLY
 		? sizeof(uint32_t)
 		: (sizeof(uint32_t) + sizeof(uint32_t));
 	const size_t	ip_header_options_len = ip_header_options[IPOPT_OLEN];
 	// IPヘッダのサイズよりオプションのサイズがでかい -> sayonara
-	if (ip_header_options_capacity < ip_header_options_len) { return; }
+	if (ip_header_options_capacity < ip_header_options_len) { return false; }
 	// オプションのサイズがタイムスタンプの入る余地がないほどちいさい -> sayonara
-	if (ip_header_options_len <= IPOPT_MINOFF + unit_size) { return; }
-
+	if (ip_header_options_len <= IPOPT_MINOFF + unit_size) { return false; }
 	// ポインタ
 	const size_t	ip_header_options_pointer = ip_header_options[IPOPT_OFFSET];
 	// ポインタが最小値よりも小さい -> sayonara
@@ -77,6 +73,24 @@ void	print_ip_timestamp(
 	DEBUGOUT("ip_header_options_len: %zu", ip_header_options_len);
 	DEBUGOUT("ip_header_options_pointer: %zu", ip_header_options_pointer);
 	if (ip_header_options_len + 1 < ip_header_options_pointer) { return; }
+	return true;
+}
+
+// IPタイムスタンプを表示する
+// ASSERT: IPタイムスタンプはオプションの先頭にある
+void	print_ip_timestamp(
+	const t_ping* ping,
+	const t_acceptance* acceptance
+) {
+	if (!validate_ip_timestamp_option(acceptance)) { return; }
+
+	const uint8_t*	ip_header_options = (void*)acceptance->ip_header + MIN_IPV4_HEADER_SIZE;
+	const size_t	ip_header_options_len = ip_header_options[IPOPT_OLEN];
+	const uint8_t	type = ip_header_options[IPOPT_POS_OV_FLG];
+	const size_t	unit_size = type == IPOPT_TS_TSONLY
+		? sizeof(uint32_t)
+		: (sizeof(uint32_t) + sizeof(uint32_t));
+	const size_t	ip_header_options_pointer = ip_header_options[IPOPT_OFFSET];
 	
 	// ここまで来てようやく表示に入る
 	bool			is_first = true;
@@ -91,7 +105,6 @@ void	print_ip_timestamp(
 		if (type == IPOPT_TS_TSANDADDR) {
 			// -n オプションが指定されている場合はホストを解決せず, アドレスのみを表示する.
 			// そうでない場合はホストの解決を試み, 成功した場合はそれを表示する.
-			// TODO: -n オプション実装後にそれを反映する
 			uint32_t addr = *(uint32_t*)&ts_buffer[j];
 			print_address_within_timestamp(addr, try_to_resolve_host);
 			j += sizeof(uint32_t);
