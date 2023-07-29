@@ -227,6 +227,7 @@ void		flip_endian_ip(void* mem);
 // protocol_icmp.c
 void		flip_endian_icmp(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
+bool		is_valid_icmp_checksum(void* icmp, size_t icmp_whole_len);
 void		construct_icmp_datagram(
 	const t_ping* ping,
 	uint8_t* datagram_buffer,
@@ -238,7 +239,7 @@ void		construct_icmp_datagram(
 void	print_unexpected_icmp(t_acceptance* acceptance);
 
 // validator.c
-bool	assimilate(const t_ping* ping, t_acceptance* acceptance);
+bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);
