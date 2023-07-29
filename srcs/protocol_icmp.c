@@ -38,6 +38,22 @@ uint16_t	derive_icmp_checksum(const void* datagram, size_t len) {
 	return (~sum) & 0xffff;
 }
 
+// ICMPデータグラムのチェックサムが正しいかどうか検証する
+// チェックサム計算の際, 一時的にデータを変更するので const がつかないが, 最終的には変更なしで返す
+// 注意: icmp はネットワークバイトオーダーであること
+bool	is_valid_icmp_checksum(void* icmp, size_t icmp_whole_len) {
+	icmp_header_t*	icmp_header = (icmp_header_t*)icmp;
+	uint16_t	received_checksum = icmp_header->ICMP_HEADER_CHECKSUM;
+
+	// チェックサムを0にして再計算する
+	icmp_header->ICMP_HEADER_CHECKSUM = 0;
+	uint16_t	derived_checksum = derive_icmp_checksum(icmp_header, icmp_whole_len);
+	DEBUGOUT("checksum: received: %u derived: %u", received_checksum, derived_checksum);
+	// チェックサムを元に戻す
+	icmp_header->ICMP_HEADER_CHECKSUM = received_checksum;
+	return derived_checksum == received_checksum;
+}
+
 static size_t	set_timestamp_for_data(uint8_t* data_buffer, size_t buffer_len) {
 	if (buffer_len < sizeof(timeval_t)) { return 0; }
 	timeval_t	tm;

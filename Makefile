@@ -4,6 +4,7 @@ INCDIR	:=	includes
 FILES	:=	\
 			main.c\
 			option.c\
+			option_aux.c\
 			usage.c\
 			host_address.c\
 			socket.c\

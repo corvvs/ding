@@ -8,6 +8,16 @@ void	sig_int(int signal) {
 	g_interrupted = 1;
 }
 
+static void	print_prologue(const t_ping* ping) {
+	const size_t datagram_payload_len = ping->prefs.data_size;
+	printf("PING %s (%s): %zu data bytes",
+		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
+	if (ping->prefs.verbose) {
+		printf(", id = 0x%04x", ping->icmp_header_id);
+	}
+	printf("\n");
+}
+
 static bool	reached_ping_limit(const t_ping* ping) {
 	return ping->prefs.count > 0 && ping->target.stat_data.packets_sent >= ping->prefs.count;
 }
@@ -24,6 +34,9 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 	// 割り込みがあった -> No
 	if (g_interrupted) {
 		DEBUGWARN("%s", "interrupted");
+		return false;
+	}
+	if (ping->target.error_occurred) {
 		return false;
 	}
 	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, timed_out: %d",
@@ -43,7 +56,7 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 	
 	if (ping->prefs.session_timeout_s > 0) {
 		timeval_t	t = get_current_time();
-		t = sub_times(&t, &ping->start_time);
+		t = sub_times(&t, &ping->target.start_time);
 		if (ping->prefs.session_timeout_s * 1000.0 < get_ms(&t)) {
 			DEBUGWARN("session timeout reached: " U64T, ping->prefs.session_timeout_s);
 			return false;
@@ -53,20 +66,23 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 	return true;
 }
 
-static void	print_prologue(const t_ping* ping) {
-	const size_t datagram_payload_len = ping->prefs.data_size;
-	printf("PING %s (%s): %zu data bytes",
-		ping->target.given_host, ping->target.resolved_host, datagram_payload_len);
-	if (ping->prefs.verbose) {
-		printf(", id = 0x%04x", ping->icmp_header_id);
-	}
-	printf("\n");
-}
-
 static void	print_sent(const t_ping* ping) {
 	if (ping->prefs.flood) {
 		ft_putchar_fd('.', STDOUT_FILENO);
 	}
+}
+
+// [送信: Echo Request]
+static void	send_ping(t_ping* ping) {
+	t_session* target = &ping->target;
+	target->receiving_timed_out = false;
+	if (send_request(ping, target->icmp_sequence) < 0) {
+		target->error_occurred = true;
+		return;
+	}
+	print_sent(ping);
+	target->last_request_sent = get_current_time();
+	target->icmp_sequence += 1;
 }
 
 static void	print_received(
@@ -95,6 +111,50 @@ static void	print_received(
 	print_ip_timestamp(ping, acceptance);
 }
 
+// [受信処理のタイムアウトを設定する]
+static void	set_waiting_timeout(const t_ping* ping, const timeval_t* timeout) {
+	timeval_t		now = get_current_time();
+	const timeval_t	elapsed_from_last_ping = sub_times(&now, &ping->target.last_request_sent);
+	timeval_t	recv_timeout = sub_times(timeout, &elapsed_from_last_ping);
+	if (recv_timeout.tv_sec < 0 || recv_timeout.tv_usec < 0) {
+		recv_timeout = TV_NEARLY_ZERO; // ← 厳密にはゼロではない; ゼロを指定すると無限に待ってしまうため
+	}
+	DEBUGOUT("recv_timeout: %.3fms", get_ms(&recv_timeout));
+	if (setsockopt(ping->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(timeval_t)) < 0) {
+		exit_with_error(EXIT_FAILURE, errno, "setsockopt(RECV Timeout)");
+	}
+}
+
+// [Echo Reply 待機処理]
+static void	wait_pong(t_ping* ping, const timeval_t* timeout) {
+	t_session* target = &ping->target;
+
+	target->receiving_timed_out = false;
+	set_waiting_timeout(ping, timeout);
+
+	// [受信とチェック]
+	t_acceptance	acceptance = {
+		.recv_buffer_len = RECV_BUFFER_LEN,
+	};
+	switch (receive_reply(ping, &acceptance)) {
+		case RR_TIMEOUT:
+			target->receiving_timed_out = true;
+			return;
+		case RR_ERROR:
+			target->error_occurred = true;
+			return;
+		case RR_INTERRUPTED:
+		case RR_UNACCEPTABLE:
+			return;
+		default:
+			break;
+	}
+
+	// [受信時出力]
+	const double triptime = mark_received(ping, &acceptance);
+	print_received(ping, &acceptance, triptime);
+}
+
 static void	print_epilogue(const t_ping* ping) {
 	print_stats(ping);
 }
@@ -106,12 +166,12 @@ int	ping_pong(t_ping* ping) {
 	print_prologue(ping);
 
 	// [送受信ループ]
-	uint16_t	sequence = 0;
-	ping->start_time = get_current_time();
+	t_session* target = &ping->target;
+	target->start_time = get_current_time();
 
 	// preload
-	for (size_t n = 0; n < ping->prefs.preload; n += 1, sequence += 1) {
-		if (send_request(ping, sequence) < 0) {
+	for (size_t n = 0; n < ping->prefs.preload; n += 1, target->icmp_sequence += 1) {
+		if (send_request(ping, target->icmp_sequence) < 0) {
 			break;
 		}
 	}
@@ -120,71 +180,23 @@ int	ping_pong(t_ping* ping) {
 	const timeval_t	ping_interval = ping->prefs.flood
 		? TV_PING_FLOOD_INTERVAL
 		: TV_PING_DEFAULT_INTERVAL;
-	timeval_t		now = get_current_time();
-	timeval_t		last_request_sent = get_current_time();
 	const timeval_t	receiving_timeout = {
 		.tv_sec = ping->prefs.wait_after_final_request_s,
 		.tv_usec = 0,
 	};
-
-	// 受信タイムアウトしたかどうか
-	bool	receiving_timed_out = false;
+	target->last_request_sent = get_current_time();
 
 	// [シグナルハンドラ設定]
 	signal(SIGINT, sig_int);
 
-	while (should_continue_session(ping, receiving_timed_out)) {
-		if (can_send_ping(ping, receiving_timed_out)) {
-			// [送信: Echo Request]
-			receiving_timed_out = false;
-			if (send_request(ping, sequence) < 0) {
-				break;
-			}
-			print_sent(ping);
-			last_request_sent = get_current_time();
-			sequence += 1;
+	while (should_continue_session(ping, target->receiving_timed_out)) {
+		if (can_send_ping(ping, target->receiving_timed_out)) {
+			send_ping(ping);
 		} else {
-			receiving_timed_out = false;
-			// [受信: Echo Reply]
-
-			// [タイムアウト時刻を設定する]
-			now = get_current_time();
-			const timeval_t	elapsed_from_last_ping = sub_times(&now, &last_request_sent);
-			timeval_t	recv_timeout = sub_times(
-				reached_ping_limit(ping) ? &receiving_timeout : &ping_interval,
-				&elapsed_from_last_ping);
-			if (recv_timeout.tv_sec < 0 || recv_timeout.tv_usec < 0) {
-				recv_timeout = TV_NEARLY_ZERO; // ← 厳密にはゼロではない; ゼロを指定するとタイムアウトしなくなるため
-			}
-			DEBUGOUT("recv_timeout: %.3fms", get_ms(&recv_timeout));
-			if (setsockopt(ping->socket_fd, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(timeval_t)) < 0) {
-				exit_with_error(EXIT_FAILURE, errno, "setsockopt(RECV Timeout)");
-			}
-
-			// [受信とチェック]
-			t_acceptance	acceptance = {
-				.recv_buffer_len = RECV_BUFFER_LEN,
-			};
-			{
-				const t_received_result rr = receive_reply(ping, &acceptance);
-				if (rr == RR_TIMEOUT) {
-					receiving_timed_out = true;
-					continue;
-				}
-				if (rr == RR_INTERRUPTED) {
-					continue;
-				}
-				if (rr == RR_ERROR) {
-					break;
-				}
-			}
-			if (check_acceptance(ping, &acceptance)) {
-				continue;
-			}
-
-			// [受信時出力]
-			const double triptime = mark_received(ping, &acceptance);
-			print_received(ping, &acceptance, triptime);
+			const timeval_t*	timeout = reached_ping_limit(ping)
+				? &receiving_timeout
+				: &ping_interval;
+			wait_pong(ping, timeout);
 		}
 	}
 

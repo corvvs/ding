@@ -49,8 +49,9 @@ static int	resolve_host(const char* given_str, char* resolved_str, size_t resolv
 	return 0;
 }
 
-int	setup_target_from_host(const char* host, t_target* target) {
+int	setup_target_from_host(const char* host, t_session* target) {
 	// 与えられたホストをIPアドレス文字列に変換する
+	*target = (t_session){};
 	target->given_host = host;
 	if (resolve_host(target->given_host, target->resolved_host, sizeof(target->resolved_host))) {
 		return -1;
@@ -75,7 +76,7 @@ uint32_t	serialize_address(const address_in_t* addr) {
 
 const char*	stringify_serialized_address(uint32_t addr32) {
 	static char	buf[16];
-	snprintf(buf, 16, "%u.%u.%u.%u",
+	snprintf(buf, sizeof(buf), "%u.%u.%u.%u",
 		(addr32 >> 24) & 0xff,
 		(addr32 >> 16) & 0xff,
 		(addr32 >> 8) & 0xff,

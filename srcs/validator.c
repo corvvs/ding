@@ -54,7 +54,6 @@ static int	validate_received_ip_preliminary(
 	return 0;
 }
 
-
 // IPレベルのバリデーション
 static int	validate_received_ip_echo_reply(
 	const ip_header_t* received_ip_header,
@@ -101,19 +100,14 @@ static int	validate_received_icmp_echo_reply(
 
 	// CHECK: is ID correct?
 	uint16_t	received_id = received_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_ID;
-	uint16_t	my_id = SWAP_NEEDED(ping->icmp_header_id);
-	if (received_id != my_id) {
-		DEBUGERR("received_id != my_id: %u != %u", received_id, my_id);
+	received_id = SWAP_NEEDED(received_id);
+	if (received_id != ping->icmp_header_id) {
+		DEBUGERR("received_id != my_id: %u != %u", received_id, ping->icmp_header_id);
 		return -1;
 	}
 
 	// CHECK: checksum is good?
-	uint16_t	received_checksum = received_icmp_header->ICMP_HEADER_CHECKSUM;
-	received_icmp_header->ICMP_HEADER_CHECKSUM = 0;
-	DEBUGOUT("icmp_whole_len: %zu", icmp_whole_len);
-	uint16_t	derived_checksum = derive_icmp_checksum(received_icmp, icmp_whole_len);
-	DEBUGOUT("checksum: received: %u derived: %u", received_checksum, derived_checksum);
-	if (received_checksum != derived_checksum) {
+	if (!is_valid_icmp_checksum(received_icmp, icmp_whole_len)) {
 		DEBUGWARN("%s", "checksum is bad");
 	}
 
@@ -126,31 +120,29 @@ static int	validate_received_icmp_echo_reply(
 	return 0;
 }
 
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance) {
+bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	const socket_address_in_t* addr_to = &ping->target.addr_to;
-	// debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
+	debug_hexdump("recv_buffer", acceptance->recv_buffer, acceptance->received_len);
 	if (validate_received_raw_data(acceptance->received_len)) {
-		return 1;
+		return false;
 	}
 	flip_endian_ip(acceptance->recv_buffer);
-	// debug_ip_header(acceptance->recv_buffer);
 	if (validate_received_ip_preliminary(acceptance->received_len, (ip_header_t*)acceptance->recv_buffer)) {
-		return 1;
+		return false;
 	}
 	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
 	const size_t		ip_header_len = acceptance->ip_header->IP_HEADER_HL * 4;
 	acceptance->icmp_whole_len = acceptance->received_len  - ip_header_len;
 	acceptance->icmp_header = (icmp_header_t*)(acceptance->recv_buffer + ip_header_len);
 	if (validate_received_icmp_preliminary(ping, acceptance)) {
-		return 1;
+		return false;
 	}
 	if (validate_received_ip_echo_reply((ip_header_t*)acceptance->recv_buffer, addr_to)) {
-		return 1;
+		return false;
 	}
 	if (validate_received_icmp_echo_reply(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
-		return 1;
+		return false;
 	}
 	flip_endian_icmp(acceptance->icmp_header);
-	// debug_icmp_header(acceptance->icmp_header);
-	return 0;
+	return true;
 }

@@ -30,6 +30,10 @@ t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 	}
 	acceptance->epoch_received = get_current_time();
 	acceptance->received_len = rv;
+
+	if (!assimilate_echo_reply(ping, acceptance)) {
+		return RR_UNACCEPTABLE;
+	}
 	return RR_SUCCESS;
 }
 

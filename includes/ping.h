@@ -41,6 +41,9 @@ typedef struct sockaddr_in	socket_address_in_t;
 # define IPOPT_POS_OV_FLG 3
 #endif
 
+#define STATUS_SUCCEEDED 0
+#define STATUS_GENERIC_FAILED 1
+#define STATUS_OPERAND_FAILED 64
 
 // 正直この値の意味が今ひとつわかっていないのだが inetutils の定義を踏襲しておく
 #define MAX_ICMP_SIZE 76
@@ -61,6 +64,7 @@ typedef enum e_received_result {
 	RR_SUCCESS,
 	RR_TIMEOUT,
 	RR_INTERRUPTED,
+	RR_UNACCEPTABLE,
 	RR_ERROR,
 }	t_received_result;
 
@@ -126,7 +130,7 @@ typedef struct s_preferences
 	// IPタイムスタンプ種別
 	t_ip_timestamp_type	ip_ts_type;
 	// IPタイムスタンプの送信元アドレスを解決するかどうか
-	bool		resolve_addr_in_ip_ts;
+	bool		dont_resolve_addr_in_ip_ts;
 	// flood
 	bool		flood;
 	// ユーザ指定送信元アドレス
@@ -139,7 +143,7 @@ typedef struct s_preferences
 } t_preferences;
 
 // ターゲット構造体
-typedef struct s_target
+typedef struct s_session
 {
 	// 入力ホスト
 	const char*			given_host;
@@ -147,9 +151,18 @@ typedef struct s_target
 	char				resolved_host[16];
 	// IPアドレス構造体
 	socket_address_in_t	addr_to;
+	// セッション開始時刻
+	timeval_t			start_time;
+	// ICMP シーケンス
+	uint16_t			icmp_sequence;
 	// 送受信統計
 	t_stat_data			stat_data;
-} t_target;
+	timeval_t			last_request_sent;
+	// session-fatal なエラーが起きたかどうか
+	bool				error_occurred;
+	// 受信タイムアウトしたかどうか
+	bool				receiving_timed_out;
+} t_session;
 
 // マスター構造体
 typedef struct s_ping
@@ -160,27 +173,35 @@ typedef struct s_ping
 	int				socket_fd;
 	// pingのID
 	uint16_t		icmp_header_id;
-	// ping開始時刻
-	timeval_t		start_time;
 	// 設定
 	t_preferences	prefs;
 	// ICMPデータグラムにタイムスタンプを含めるか否か
 	bool			sending_timestamp;
 
 	// 宛先に依存するパラメータ
-	t_target		target;
+	t_session		target;
 } t_ping;
 
+typedef struct	s_arguments {
+	int		argc;
+	char**	argv;
+}	t_arguments;
+
 // option.c
-int				parse_option(int argc, char** argv, bool by_root, t_preferences* pref);
+void			proceed_arguments(t_arguments* args, int n);
+int				parse_option(t_arguments* args, bool by_root, t_preferences* pref);
 t_preferences	default_preferences(void);
+
+// option_aux.c
+int				parse_number(const char* str, unsigned long* out, unsigned long min, unsigned long max);
+int				parse_pattern(const char* str, char* buffer, size_t max_len);
 
 // usage.c
 void			print_usage(void);
 
 // host_address.c
 address_info_t*	resolve_str_into_address(const char* host_str);
-int				setup_target_from_host(const char* host, t_target* target);
+int				setup_target_from_host(const char* host, t_session* target);
 uint32_t		serialize_address(const address_in_t* addr);
 const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
@@ -206,6 +227,7 @@ void		flip_endian_ip(void* mem);
 // protocol_icmp.c
 void		flip_endian_icmp(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
+bool		is_valid_icmp_checksum(void* icmp, size_t icmp_whole_len);
 void		construct_icmp_datagram(
 	const t_ping* ping,
 	uint8_t* datagram_buffer,
@@ -217,7 +239,7 @@ void		construct_icmp_datagram(
 void	print_unexpected_icmp(t_acceptance* acceptance);
 
 // validator.c
-int	check_acceptance(t_ping* ping, t_acceptance* acceptance);
+bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	mark_received(t_ping* ping, const t_acceptance* acceptance);
@@ -253,7 +275,11 @@ void	debug_msg_flags(const struct msghdr* msg);
 void	debug_ip_header(const void* mem);
 void	debug_icmp_header(const void* mem);
 
+
+// エンディアン変換を行う.
+// 引数 value のサイズ(1, 2, 4, 8)に応じて変換関数を自動選択する.
 # define SWAP_BYTE(value) (sizeof(value) < 2 ? (value) : sizeof(value) < 4 ? swap_2byte(value) : sizeof(value) < 8 ? swap_4byte(value) : swap_8byte(value))
+
 // エンディアン変換が必要(=環境のエンディアンがネットワークバイトオーダーではない)ならエンディアン変換を行う.
 // (返り値が uint64_t になることに注意)
 // (使用するファイルで extern int	g_is_little_endian; すること)
