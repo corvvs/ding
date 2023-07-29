@@ -76,7 +76,7 @@ uint32_t	serialize_address(const address_in_t* addr) {
 
 const char*	stringify_serialized_address(uint32_t addr32) {
 	static char	buf[16];
-	snprintf(buf, 16, "%u.%u.%u.%u",
+	snprintf(buf, sizeof(buf), "%u.%u.%u.%u",
 		(addr32 >> 24) & 0xff,
 		(addr32 >> 16) & 0xff,
 		(addr32 >> 8) & 0xff,

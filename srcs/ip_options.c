@@ -4,8 +4,7 @@ extern int	g_is_little_endian;
 static char*	resolve_host(uint32_t addr) {
 	socket_address_in_t	sa;
 	static char			hostname[NI_MAXHOST];
-	char				addr_str[16];
-
+	const char*			addr_str = stringify_serialized_address(addr);
 	ft_memset(&sa, 0, sizeof(socket_address_in_t));
 	sa.sin_family = AF_INET;
 	errno = 0;
@@ -67,12 +66,12 @@ bool	validate_ip_timestamp_option(const t_acceptance* acceptance) {
 	// ポインタ
 	const size_t	ip_header_options_pointer = ip_header_options[IPOPT_OFFSET];
 	// ポインタが最小値よりも小さい -> sayonara
-	if (ip_header_options_pointer <= IPOPT_MINOFF) { return; }
+	if (ip_header_options_pointer <= IPOPT_MINOFF) { return false; }
 	// ポインタがオプションのサイズよりも大きい -> sayonara
 	// (データが満タンなら両者は一致し, 空きがあるならポインタが小さくなるはず)
 	DEBUGOUT("ip_header_options_len: %zu", ip_header_options_len);
 	DEBUGOUT("ip_header_options_pointer: %zu", ip_header_options_pointer);
-	if (ip_header_options_len + 1 < ip_header_options_pointer) { return; }
+	if (ip_header_options_len + 1 < ip_header_options_pointer) { return false; }
 	return true;
 }
 
@@ -85,7 +84,6 @@ void	print_ip_timestamp(
 	if (!validate_ip_timestamp_option(acceptance)) { return; }
 
 	const uint8_t*	ip_header_options = (void*)acceptance->ip_header + MIN_IPV4_HEADER_SIZE;
-	const size_t	ip_header_options_len = ip_header_options[IPOPT_OLEN];
 	const uint8_t	type = ip_header_options[IPOPT_POS_OV_FLG];
 	const size_t	unit_size = type == IPOPT_TS_TSONLY
 		? sizeof(uint32_t)
