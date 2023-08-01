@@ -86,15 +86,6 @@ static void	send_ping(t_ping* ping) {
 	target->icmp_sequence += 1;
 }
 
-static void	print_time_exceeded_line(const ip_header_t* ip_header, size_t original_icmp_whole_len) {
-	dprintf(
-		STDERR_FILENO,
-		"%zu bytes from %s: Time to live exceeded\n",
-		original_icmp_whole_len,
-		stringify_address(&ip_header->IP_HEADER_SRC)
-	);
-}
-
 static void	print_received(
 	const t_ping* ping,
 	const t_acceptance* acceptance,
@@ -136,7 +127,7 @@ static void	print_received(
 				flip_endian_ip(original_ip);
 			}
 
-			print_time_exceeded_line(ip_header, original_icmp_whole_len);
+			print_time_exceeded_line(ping, ip_header, original_ip, icmp_whole_len, original_icmp_whole_len);
 			break;
 		}
 	}

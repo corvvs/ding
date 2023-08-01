@@ -58,7 +58,7 @@ static int	validate_received_ip_preliminary(
 }
 
 // IPレベルのバリデーション
-static int	validate_received_ip_echo_reply(
+static int	validate_received_ip_detailed(
 	const t_ping* ping,
 	const ip_header_t* received_ip_header,
 	const icmp_header_t* received_icmp_header,
@@ -66,13 +66,26 @@ static int	validate_received_ip_echo_reply(
 ) {
 	if (ping->inaccessible_ipheader) { return 0; }
 	// CHECK: IP: Reply の送信元 == Request の送信先
-	if (received_icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY) {
-		const uint32_t	address_request_to = addr_to->sin_addr.s_addr;
-		const uint32_t	address_reply_from = serialize_address(&received_ip_header->IP_HEADER_SRC);
-		DEBUGOUT("address_request_to: %s", stringify_serialized_address(address_request_to));
-		DEBUGOUT("address_reply_from: %s", stringify_address(&received_ip_header->IP_HEADER_SRC));
-		if (address_request_to != address_reply_from) {
-			DEBUGWARN("address_request_to != address_reply_from: %u != %u", address_request_to, address_reply_from);
+	switch (received_icmp_header->ICMP_HEADER_TYPE) {
+		case ICMP_TYPE_ECHO_REPLY: {
+			const uint32_t	address_request_to = addr_to->sin_addr.s_addr;
+			const uint32_t	address_reply_from = serialize_address(&received_ip_header->IP_HEADER_SRC);
+			DEBUGOUT("address_request_to: %s", stringify_serialized_address(address_request_to));
+			DEBUGOUT("address_reply_from: %s", stringify_address(&received_ip_header->IP_HEADER_SRC));
+			if (address_request_to != address_reply_from) {
+				DEBUGWARN("address_request_to != address_reply_from: %u != %u", address_request_to, address_reply_from);
+			}
+			break;
+		}
+		case ICMP_TYPE_TIME_EXCEEDED: {
+			const size_t	datagram_len = received_ip_header->IP_HEADER_LEN;
+			const size_t	minimum_header_len = sizeof(ip_header_t) + sizeof(icmp_header_t);
+			const size_t	minimum_original_len = sizeof(ip_header_t) + sizeof(icmp_header_t);
+			if (datagram_len < minimum_header_len + minimum_original_len) {
+				DEBUGERR("datagram length is too short: %zu < %zu", datagram_len, minimum_header_len + minimum_original_len);
+				return -1;
+			}
+			break;
 		}
 	}
 	return 0;
@@ -97,7 +110,7 @@ static int	validate_received_icmp_preliminary(
 }
 
 
-static int	validate_received_icmp_echo_reply(
+static int	validate_received_icmp_detailed(
 	const t_ping* ping,
 	icmp_header_t* received_icmp_header,
 	size_t icmp_whole_len
@@ -158,10 +171,10 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	if (validate_received_icmp_preliminary(ping, acceptance)) {
 		return false;
 	}
-	if (validate_received_ip_echo_reply(ping, acceptance->ip_header, acceptance->icmp_header, addr_to)) {
+	if (validate_received_ip_detailed(ping, acceptance->ip_header, acceptance->icmp_header, addr_to)) {
 		return false;
 	}
-	if (validate_received_icmp_echo_reply(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
+	if (validate_received_icmp_detailed(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
 		return false;
 	}
 	flip_endian_icmp(acceptance->icmp_header);
