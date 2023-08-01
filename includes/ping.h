@@ -19,8 +19,9 @@
 #include "common.h"
 
 #define PROGRAM_NAME		"ping"
-#define ICMP_ECHO_REQUEST	8
-#define ICMP_ECHO_REPLY		0
+#define ICMP_TYPE_ECHO_REQUEST	0x8
+#define ICMP_TYPE_ECHO_REPLY		0x0
+#define ICMP_TYPE_TIME_EXCEEDED	0xb
 
 typedef struct timeval		timeval_t;
 typedef struct addrinfo		address_info_t;
@@ -93,6 +94,8 @@ typedef struct s_stat_data {
 	size_t	packets_sent;
 	// 受信済みパケット数
 	size_t	packets_received;
+	// 受信済みパケット数(Echo Reply以外も含む)
+	size_t	packets_received_any;
 	// ラウンドトリップ数
 	double*	rtts;
 	// ラウンドトリップ数のキャパシティ
@@ -182,7 +185,7 @@ typedef struct s_ping
 	// ICMPデータグラムにタイムスタンプを含める時に立つフラグ
 	bool			sending_timestamp;
 	// 受信パケットのIPヘッダにアクセスできない時に立つフラグ
-	bool			unreceivable_ipheader;
+	bool			inaccessible_ipheader;
 	// 受信パケットのIPヘッダがカーネルによって書き換えられる時に立つフラグ
 	bool			received_ipheader_modified;
 
@@ -215,7 +218,7 @@ const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
 
 // socket.c
-int create_icmp_socket(bool* unreceivable_ipheader, const t_preferences* prefs);
+int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs);
 
 // ping_pong.c
 int	ping_pong(t_ping* ping);
@@ -235,7 +238,7 @@ void		flip_endian_ip(void* mem);
 // protocol_icmp.c
 void		flip_endian_icmp(void* mem);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
-bool		is_valid_icmp_checksum(void* icmp, size_t icmp_whole_len);
+bool		is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_whole_len);
 void		construct_icmp_datagram(
 	const t_ping* ping,
 	uint8_t* datagram_buffer,

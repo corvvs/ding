@@ -68,7 +68,7 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 }
 
 // ICMPソケットを作成する
-int create_icmp_socket(bool* unreceivable_ipheader, const t_preferences* prefs) {
+int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) {
 	// ソケット生成
 	errno = 0;
 	int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -85,9 +85,9 @@ int create_icmp_socket(bool* unreceivable_ipheader, const t_preferences* prefs) 
 			return -1;
 		}
 #ifdef __APPLE__
-		(void)unreceivable_ipheader;
+		(void)inaccessible_ipheader;
 #else
-		*unreceivable_ipheader = true;
+		*inaccessible_ipheader = true;
 #endif
 	}
 

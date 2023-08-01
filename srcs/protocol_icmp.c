@@ -9,8 +9,10 @@ void	flip_endian_icmp(void* mem) {
 	hd->ICMP_HEADER_TYPE = SWAP_NEEDED(hd->ICMP_HEADER_TYPE);
 	hd->ICMP_HEADER_CODE = SWAP_NEEDED(hd->ICMP_HEADER_CODE);
 	hd->ICMP_HEADER_CHECKSUM = SWAP_NEEDED(hd->ICMP_HEADER_CHECKSUM);
-	hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID);
-	hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ);
+	if (hd->ICMP_HEADER_TYPE == ICMP_ECHO || hd->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY) {
+		hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID);
+		hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ);
+	}
 }
 
 // datagram に対して ICMP チェックサムを計算する
@@ -35,22 +37,41 @@ uint16_t	derive_icmp_checksum(const void* datagram, size_t len) {
 	sum = (sum >> 16) + (sum & 0xffff);
 	sum = (sum >> 16) + sum;
 	// 最後にもう1度1の補数を取る
-	return (~sum) & 0xffff;
+	uint16_t	ans = ~sum;
+	return ans;
 }
 
 // ICMPデータグラムのチェックサムが正しいかどうか検証する
 // チェックサム計算の際, 一時的にデータを変更するので const がつかないが, 最終的には変更なしで返す
 // 注意: icmp はネットワークバイトオーダーであること
-bool	is_valid_icmp_checksum(void* icmp, size_t icmp_whole_len) {
-	icmp_header_t*	icmp_header = (icmp_header_t*)icmp;
-	uint16_t	received_checksum = icmp_header->ICMP_HEADER_CHECKSUM;
+bool	is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_whole_len) {
+	uint16_t		received_checksum = icmp_header->ICMP_HEADER_CHECKSUM;
+	ip_header_t*	original_ip = NULL;
+	if (icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_TIME_EXCEEDED) {
+		icmp_detailed_header_t*	dicmp = (icmp_detailed_header_t*)icmp_header;
+		original_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
+	}
+	const bool		flip_original_ip = original_ip && ping->received_ipheader_modified;
 
 	// チェックサムを0にして再計算する
+	debug_hexdump("before cksum", icmp_header, icmp_whole_len);
 	icmp_header->ICMP_HEADER_CHECKSUM = 0;
+	if (flip_original_ip) {
+		flip_endian_ip(original_ip);
+	}
 	uint16_t	derived_checksum = derive_icmp_checksum(icmp_header, icmp_whole_len);
-	DEBUGOUT("checksum: received: %u derived: %u", received_checksum, derived_checksum);
+	DEBUGOUT("checksum: received: %u(%04x) derived: %u(%04x) diffrence: %u(%04x) icmp_whole_len: %zu",
+		received_checksum, received_checksum,
+		derived_checksum, derived_checksum,
+		(received_checksum - derived_checksum),
+		(received_checksum - derived_checksum),
+		icmp_whole_len
+	);
 	// チェックサムを元に戻す
 	icmp_header->ICMP_HEADER_CHECKSUM = received_checksum;
+	if (flip_original_ip) {
+		flip_endian_ip(original_ip);
+	}
 	return derived_checksum == received_checksum;
 }
 
@@ -94,7 +115,7 @@ void	construct_icmp_datagram(
 	uint8_t*		icmp_dt = (void*)datagram_buffer + sizeof(icmp_header_t);
 	const size_t	icmp_dt_size = icmp_datagram_len - sizeof(icmp_header_t);
 	*icmp_hd = (icmp_header_t) {
-		.ICMP_HEADER_TYPE = ICMP_ECHO_REQUEST,
+		.ICMP_HEADER_TYPE = ICMP_TYPE_ECHO_REQUEST,
 		.ICMP_HEADER_CODE = 0,
 		.ICMP_HEADER_ECHO.ICMP_HEADER_ID = ping->icmp_header_id,
 		.ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = sequence,

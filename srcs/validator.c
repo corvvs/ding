@@ -59,17 +59,21 @@ static int	validate_received_ip_preliminary(
 
 // IPレベルのバリデーション
 static int	validate_received_ip_echo_reply(
+	const t_ping* ping,
 	const ip_header_t* received_ip_header,
+	const icmp_header_t* received_icmp_header,
 	const socket_address_in_t* addr_to
 ) {
-
+	if (ping->inaccessible_ipheader) { return 0; }
 	// CHECK: IP: Reply の送信元 == Request の送信先
-	const uint32_t	address_request_to = addr_to->sin_addr.s_addr;
-	const uint32_t	address_reply_from = serialize_address(&received_ip_header->IP_HEADER_SRC);
-	DEBUGOUT("address_request_to: %s", stringify_serialized_address(address_request_to));
-	DEBUGOUT("address_reply_from: %s", stringify_address(&received_ip_header->IP_HEADER_SRC));
-	if (address_request_to != address_reply_from) {
-		DEBUGWARN("address_request_to != address_reply_from: %u != %u", address_request_to, address_reply_from);
+	if (received_icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY) {
+		const uint32_t	address_request_to = addr_to->sin_addr.s_addr;
+		const uint32_t	address_reply_from = serialize_address(&received_ip_header->IP_HEADER_SRC);
+		DEBUGOUT("address_request_to: %s", stringify_serialized_address(address_request_to));
+		DEBUGOUT("address_reply_from: %s", stringify_address(&received_ip_header->IP_HEADER_SRC));
+		if (address_request_to != address_reply_from) {
+			DEBUGWARN("address_request_to != address_reply_from: %u != %u", address_request_to, address_reply_from);
+		}
 	}
 	return 0;
 }
@@ -81,39 +85,44 @@ static int	validate_received_icmp_preliminary(
 	(void)ping;
 	icmp_header_t*	received_icmp_header = acceptance->icmp_header;
 
-	// CHECK: Type == 0?
-	if (received_icmp_header->ICMP_HEADER_TYPE != 0) {
-		DEBUGOUT("received_icmp_header->ICMP_HEADER_TYPE != 0: %u != 0", received_icmp_header->ICMP_HEADER_TYPE);
-
-		// 特定のTypeについてはフォローアップを行う
-		print_unexpected_icmp(ping, acceptance);
-		return -1;
+	switch (received_icmp_header->ICMP_HEADER_TYPE) {
+		case ICMP_TYPE_ECHO_REPLY:
+		case ICMP_TYPE_TIME_EXCEEDED:
+			return 0;
+		default:
+			// 特定のTypeについてはフォローアップを行う
+			print_unexpected_icmp(ping, acceptance);
+			return -1;
 	}
-
-	return 0;
 }
 
 
 static int	validate_received_icmp_echo_reply(
 	const t_ping* ping,
-	void* received_icmp,
+	icmp_header_t* received_icmp_header,
 	size_t icmp_whole_len
 ) {
-	icmp_header_t*	received_icmp_header = (icmp_header_t*)received_icmp;
 
-	// CHECK: is ID correct?
-	// データグラムソケットを使っている場合, こちらが指定したIDをカーネルが書き換えてしまうので, このチェックは飛ばす
-	if (!ping->unreceivable_ipheader) {
-		uint16_t	received_id = received_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_ID;
-		received_id = SWAP_NEEDED(received_id);
-		if (received_id != ping->icmp_header_id) {
-			DEBUGERR("received_id != my_id: %u != %u", received_id, ping->icmp_header_id);
-			return -1;
+	if (received_icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY) {
+		// CHECK: is ID correct?
+		// データグラムソケットを使っている場合, こちらが指定したIDをカーネルが書き換えてしまうので, このチェックは飛ばす
+		if (!ping->inaccessible_ipheader) {
+			uint16_t	received_id = received_icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_ID;
+			received_id = SWAP_NEEDED(received_id);
+			if (received_id != ping->icmp_header_id) {
+				DEBUGERR("received_id != my_id: %u != %u", received_id, ping->icmp_header_id);
+				return -1;
+			}
 		}
 	}
 
 	// CHECK: checksum is good?
-	if (!is_valid_icmp_checksum(received_icmp, icmp_whole_len)) {
+	// TODO:
+	// 受信したものが Time Exceeded だった場合,
+	// ICMPペイロード内のオリジナルIPヘッダもエンディアン変換されているので,
+	// そのままチェックサムを計算すると合わない
+	// -> オリジナルIPヘッダのエンディアンを元に戻して計算する
+	if (!is_valid_icmp_checksum(ping, received_icmp_header, icmp_whole_len)) {
 		DEBUGWARN("%s", "checksum is bad");
 	}
 
@@ -131,7 +140,7 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	if (validate_received_raw_data(acceptance->received_len)) {
 		return false;
 	}
-	if (!ping->unreceivable_ipheader) {
+	if (!ping->inaccessible_ipheader) {
 		// NOTE: データグラムソケットを使っている場合IPヘッダを受信できないので, ここのチェックは飛ばす
 		if (!ping->received_ipheader_modified) {
 			flip_endian_ip(acceptance->recv_buffer);
@@ -141,7 +150,7 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 		}
 	}
 	acceptance->ip_header = (ip_header_t*)acceptance->recv_buffer;
-	const size_t		ip_header_len = ping->unreceivable_ipheader
+	const size_t		ip_header_len = ping->inaccessible_ipheader
 		? 0
 		: acceptance->ip_header->IP_HEADER_HL * 4;
 	acceptance->icmp_whole_len = acceptance->received_len  - ip_header_len;
@@ -149,10 +158,8 @@ bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance) {
 	if (validate_received_icmp_preliminary(ping, acceptance)) {
 		return false;
 	}
-	if (!ping->unreceivable_ipheader) {
-		if (validate_received_ip_echo_reply((ip_header_t*)acceptance->recv_buffer, addr_to)) {
-			return false;
-		}
+	if (validate_received_ip_echo_reply(ping, acceptance->ip_header, acceptance->icmp_header, addr_to)) {
+		return false;
 	}
 	if (validate_received_icmp_echo_reply(ping, acceptance->icmp_header, acceptance->icmp_whole_len)) {
 		return false;
