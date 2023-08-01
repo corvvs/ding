@@ -23,7 +23,7 @@ static bool	reached_ping_limit(const t_ping* ping) {
 }
 
 static bool	reached_pong_limit(const t_ping* ping) {
-	return ping->prefs.count > 0 && ping->target.stat_data.packets_received >= ping->prefs.count;
+	return ping->prefs.count > 0 && ping->target.stat_data.packets_received_any >= ping->prefs.count;
 }
 
 static bool	can_send_ping(const t_ping* ping, bool receiving_timed_out) {
@@ -39,10 +39,11 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 	if (ping->target.error_occurred) {
 		return false;
 	}
-	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, timed_out: %d",
+	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, recv_any: %zu, timed_out: %d",
 		ping->prefs.count,
 		ping->target.stat_data.packets_sent,
 		ping->target.stat_data.packets_received,
+		ping->target.stat_data.packets_received_any,
 		receiving_timed_out);
 	// カウントが設定されている and 受信数がカウント以上に達した and タイムアウトした
 	if (reached_ping_limit(ping) && receiving_timed_out) {
@@ -85,6 +86,15 @@ static void	send_ping(t_ping* ping) {
 	target->icmp_sequence += 1;
 }
 
+static void	print_time_exceeded_line(const ip_header_t* ip_header, size_t original_icmp_whole_len) {
+	dprintf(
+		STDERR_FILENO,
+		"%zu bytes from %s: Time to live exceeded\n",
+		original_icmp_whole_len,
+		stringify_address(&ip_header->IP_HEADER_SRC)
+	);
+}
+
 static void	print_received(
 	const t_ping* ping,
 	const t_acceptance* acceptance,
@@ -95,17 +105,41 @@ static void	print_received(
 		return;
 	}
 
-	// 本体
-	printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
-		acceptance->icmp_whole_len,
-		stringify_address(&acceptance->ip_header->IP_HEADER_SRC),
-		acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-		acceptance->ip_header->IP_HEADER_TTL
-	);
-	if (ping->sending_timestamp) {
-		printf(" time=%.3f ms", triptime);
+	const ip_header_t*	ip_header = acceptance->ip_header;
+	icmp_header_t*		icmp_header = acceptance->icmp_header;
+	const size_t		icmp_whole_len = acceptance->icmp_whole_len;
+	switch (acceptance->icmp_header->ICMP_HEADER_TYPE) {
+		case ICMP_TYPE_ECHO_REPLY: {
+			// 本体
+			printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
+				icmp_whole_len,
+				stringify_address(&ip_header->IP_HEADER_SRC),
+				icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+				ip_header->IP_HEADER_TTL
+			);
+			if (ping->sending_timestamp) {
+				printf(" time=%.3f ms", triptime);
+			}
+			printf("\n");
+			break;
+		}
+		case ICMP_TYPE_TIME_EXCEEDED: {
+			icmp_detailed_header_t*	dicmp = (icmp_detailed_header_t*)icmp_header;
+			ip_header_t*			original_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
+			const size_t			original_ip_whole_len = icmp_whole_len - ((void*)original_ip - (void*)dicmp);
+			const size_t			original_ip_header_len = original_ip->IP_HEADER_HL * 4;
+			const size_t			original_icmp_whole_len = original_ip_whole_len - original_ip_header_len;
+			// NOTE: ペイロードのオリジナルICMPの中身はカットされる可能性がある
+			// (RFCでは"64 bits of Data Datagram"としか書かれていない)
+			// ので, チェックサムは検証しない
+			if (!ping->received_ipheader_modified) {
+				flip_endian_ip(original_ip);
+			}
+
+			print_time_exceeded_line(ip_header, original_icmp_whole_len);
+			break;
+		}
 	}
-	printf("\n");
 
 	// もしあるならIPタイムスタンプを表示する
 	print_ip_timestamp(ping, acceptance);

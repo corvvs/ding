@@ -11,9 +11,10 @@ static void	extend_buffer(t_stat_data* stat_data) {
 // ASSERTION: received_icmp のサイズが sizeof(timeval_t) 以上
 double	mark_received(t_ping* ping, const t_acceptance* acceptance) {
 	t_stat_data*	stat_data = &ping->target.stat_data;
-	if (!ping->sending_timestamp) {
-		// ICMPにタイムスタンプを入れていない場合は, 受信カウントだけ増やして終わり
-		stat_data->packets_received += 1;
+	stat_data->packets_received_any += 1;
+	if (!ping->sending_timestamp ||
+		acceptance->icmp_header->ICMP_HEADER_TYPE != ICMP_TYPE_ECHO_REPLY) {
+		// ICMPにタイムスタンプを入れていない場合はここで終わり
 		return 0;
 	}
 	// アライメント違反を防ぐために, 一旦別バッファにコピーする.
@@ -102,7 +103,7 @@ static void	print_stats_packet_loss(const t_stat_data* stat_data) {
 // ラウンドトリップに関する統計データを表示
 static void	print_stats_roundtrip(const t_stat_data* stat_data) {
 	// 受信パケットがない場合は統計データを出さない
-	if (stat_data->packets_received == 0) { return; }
+	if (stat_data->packets_received == 0 || stat_data->rtts == NULL) { return; }
 	double	min = rtt_min(stat_data);
 	double	max = rtt_max(stat_data);
 	double	avg = rtt_average(stat_data);

@@ -17,11 +17,20 @@ typedef struct in_addr address_in_t;
 #define IP_HEADER_SRC ip_src
 #define IP_HEADER_DST ip_dst
 
-typedef struct icmp icmp_header_t;
+// macOS には struct icmphdr 相当の構造体定義がなさそうなので自前定義する
+typedef struct ft_icmp_hdr {
+	u_char  icmp_type;
+	u_char  icmp_code;
+	u_int16_t icmp_cksum;
+	struct ft_ih_idseq {
+		n_short icd_id;
+		n_short icd_seq;
+	} ih_idseq;
+}	icmp_header_t;
 #define ICMP_HEADER_TYPE icmp_type
 #define ICMP_HEADER_CODE icmp_code
 #define ICMP_HEADER_CHECKSUM icmp_cksum
-#define ICMP_HEADER_ECHO icmp_hun.ih_idseq
+#define ICMP_HEADER_ECHO ih_idseq
 #define ICMP_HEADER_ID icd_id
 #define ICMP_HEADER_SEQ icd_seq
 

@@ -10,10 +10,12 @@ void	flip_endian_ip(void* mem) {
 	ip_header_t*	ip_hd = (ip_header_t*)mem;
 	ip_hd->IP_HEADER_TOS =  SWAP_NEEDED(ip_hd->IP_HEADER_TOS);
 	ip_hd->IP_HEADER_LEN =  SWAP_NEEDED(ip_hd->IP_HEADER_LEN);
-	ip_hd->IP_HEADER_ID =   SWAP_NEEDED(ip_hd->IP_HEADER_ID);
 	ip_hd->IP_HEADER_OFF =  SWAP_NEEDED(ip_hd->IP_HEADER_OFF);
 	ip_hd->IP_HEADER_TTL =  SWAP_NEEDED(ip_hd->IP_HEADER_TTL);
 	ip_hd->IP_HEADER_PROT = SWAP_NEEDED(ip_hd->IP_HEADER_PROT);
-	ip_hd->IP_HEADER_SUM =  SWAP_NEEDED(ip_hd->IP_HEADER_SUM);
-	// NOTE: IPアドレスはエンディン変換の対象としないのが普通
+	// NOTE: IPアドレスはエンディアン変換の対象としないのが普通
+	// ip_hd->IP_HEADER_ID =   SWAP_NEEDED(ip_hd->IP_HEADER_ID);
+	// ip_hd->IP_HEADER_SUM =  SWAP_NEEDED(ip_hd->IP_HEADER_SUM);
+	// NOTE: ID, ヘッダーチェックサムをエンディアン変換すると
+	// 特殊な状況でICMPチェックサムが合わなくなるので除外
 }
