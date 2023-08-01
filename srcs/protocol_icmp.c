@@ -54,7 +54,7 @@ bool	is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size
 	const bool		flip_original_ip = original_ip && ping->received_ipheader_modified;
 
 	// チェックサムを0にして再計算する
-	debug_hexdump("before cksum", icmp_header, icmp_whole_len);
+	// debug_hexdump("before cksum", icmp_header, icmp_whole_len);
 	icmp_header->ICMP_HEADER_CHECKSUM = 0;
 	if (flip_original_ip) {
 		flip_endian_ip(original_ip);

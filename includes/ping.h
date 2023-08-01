@@ -69,7 +69,7 @@ typedef enum e_received_result {
 	RR_ERROR,
 }	t_received_result;
 
-#define	RECV_BUFFER_LEN 4096
+#define	RECV_BUFFER_LEN MAX_IPV4_DATAGRAM_SIZE
 // 受信データを管理する構造体
 typedef struct s_acceptance {
 	// 受信用バッファ
@@ -248,6 +248,13 @@ void		construct_icmp_datagram(
 
 // unexpected_icmp.c
 void	print_unexpected_icmp(const t_ping* ping, t_acceptance* acceptance);
+void	print_time_exceeded_line(
+	const t_ping* ping,
+	const ip_header_t* ip_header,
+	ip_header_t* original_ip,
+	size_t icmp_whole_len,
+	size_t original_icmp_whole_len
+);
 
 // validator.c
 bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);

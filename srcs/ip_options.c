@@ -23,7 +23,9 @@ static char*	resolve_ipaddr_to_host(uint32_t addr) {
 		NI_NAMEREQD
 	);
 	if (rv) {
-		DEBUGWARN("failed to getnameinfo for %s: %s", addr_str, strerror(errno));
+		if (errno) {
+			DEBUGWARN("failed to getnameinfo for %s: %s", addr_str, strerror(errno));
+		}
 		return NULL;
 	}
 	return hostname;
