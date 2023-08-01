@@ -1,7 +1,7 @@
 #include "ping.h"
 extern int	g_is_little_endian;
 
-static char*	resolve_host(uint32_t addr) {
+static char*	resolve_ipaddr_to_host(uint32_t addr) {
 	socket_address_in_t	sa;
 	static char			hostname[NI_MAXHOST];
 	const char*			addr_str = stringify_serialized_address(addr);
@@ -30,10 +30,8 @@ static char*	resolve_host(uint32_t addr) {
 }
 
 static void	print_address_within_timestamp(uint32_t addr, bool try_to_resolve_host) {
-	addr = SWAP_NEEDED(addr);
-
 	if (try_to_resolve_host) {
-		char*	hostname = resolve_host(addr);
+		char*	hostname = resolve_ipaddr_to_host(addr);
 		if (hostname != NULL) {
 			printf("\t%s (%s)", hostname, stringify_address((const void*)&addr));
 			return;
