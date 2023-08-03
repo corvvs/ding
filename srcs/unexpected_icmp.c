@@ -39,8 +39,8 @@ static void	print_original_ip_table(const ip_header_t* ip_header) {
 	printf("  %02x", ip_header->IP_HEADER_TTL);
 	printf("  %02x", ip_header->IP_HEADER_PROT);
 	printf(" %04x", (uint16_t)SWAP_NEEDED(ip_header->IP_HEADER_SUM));
-	printf(" %s ", stringify_serialized_address(ip_header->IP_HEADER_SRC));
-	printf(" %s ", stringify_serialized_address(ip_header->IP_HEADER_DST));
+	printf(" %s ", stringify_address(&ip_header->IP_HEADER_SRC));
+	printf(" %s ", stringify_address(&ip_header->IP_HEADER_DST));
 	printf("\n");
 }
 
