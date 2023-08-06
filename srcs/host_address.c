@@ -90,3 +90,22 @@ const char*	stringify_serialized_address(uint32_t addr32) {
 const char*	stringify_address(const address_in_t* addr) {
 	return stringify_serialized_address(serialize_address(addr));
 }
+
+static const char*	resolve_ipaddr_to_host(const t_ping* ping, uint32_t addr) {
+	if (ping->target.effectively_resolved && ping->target.addr_to_ip == addr) {
+		return ping->target.given_host;
+	}
+	return NULL;
+}
+
+void	print_address(const t_ping* ping, uint32_t addr) {
+	const bool		try_to_resolve_host = !ping->prefs.dont_resolve_addr_received;
+	if (try_to_resolve_host) {
+		const char*	hostname = resolve_ipaddr_to_host(ping, addr);
+		if (hostname != NULL) {
+			printf("%s (%s)", hostname, stringify_address((const void*)&addr));
+			return;
+		}
+	}
+	printf("%s", stringify_address((const void*)&addr));
+}

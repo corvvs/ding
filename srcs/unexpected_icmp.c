@@ -68,11 +68,9 @@ void	print_time_exceeded_line(
 	size_t icmp_whole_len,
 	size_t original_icmp_whole_len
 ) {
-	printf(
-		"%zu bytes from %s: Time to live exceeded\n",
-		icmp_whole_len,
-		stringify_address(&ip_header->IP_HEADER_SRC)
-	);
+	printf("%zu bytes from ", icmp_whole_len);
+	print_address(ping, ip_header->IP_HEADER_SRC);
+	printf(": Time to live exceeded\n");
 
 	if (ping->prefs.verbose) {
 		flip_endian_ip(original_ip);

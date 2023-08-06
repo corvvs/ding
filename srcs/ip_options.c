@@ -1,24 +1,6 @@
 #include "ping.h"
 extern int	g_is_little_endian;
 
-static const char*	resolve_ipaddr_to_host(const t_ping* ping, uint32_t addr) {
-	if (ping->target.effectively_resolved && ping->target.addr_to_ip == addr) {
-		return ping->target.given_host;
-	}
-	return NULL;
-}
-
-static void	print_address_within_timestamp(const t_ping* ping, uint32_t addr, bool try_to_resolve_host) {
-	if (try_to_resolve_host) {
-		const char*	hostname = resolve_ipaddr_to_host(ping, addr);
-		if (hostname != NULL) {
-			printf("\t%s (%s)", hostname, stringify_address((const void*)&addr));
-			return;
-		}
-	}
-	printf("\t%s", stringify_address((const void*)&addr));
-}
-
 bool	validate_ip_timestamp_option(const t_acceptance* acceptance) {
 	const size_t	ip_header_len = acceptance->ip_header->IP_HEADER_HL * 4;
 	// IPヘッダオプションがない -> sayonara
@@ -71,7 +53,6 @@ void	print_ip_timestamp(
 	bool			is_first = true;
 	const size_t	ts_len = ip_header_options_pointer - (IPOPT_MINOFF + 1);
 	uint8_t			ts_buffer[ts_len];
-	const bool		try_to_resolve_host = !ping->prefs.dont_resolve_addr_received;
 	ft_memcpy(ts_buffer, ip_header_options + IPOPT_MINOFF, ts_len); // メモリアライメント違反を避けるためにコピー
 	for (size_t	i = 0; i < ts_len; i += unit_size) {
 		if (is_first) { printf("TS:"); }
@@ -81,7 +62,8 @@ void	print_ip_timestamp(
 			// -n オプションが指定されている場合はホストを解決せず, アドレスのみを表示する.
 			// そうでない場合はホストの解決を試み, 成功した場合はそれを表示する.
 			uint32_t addr = *(uint32_t*)&ts_buffer[j];
-			print_address_within_timestamp(ping, addr, try_to_resolve_host);
+			printf("\t");
+			print_address(ping, addr);
 			j += sizeof(uint32_t);
 		}
 

@@ -220,6 +220,7 @@ int				setup_target_from_host(const char* host, t_session* target);
 uint32_t		serialize_address(const address_in_t* addr);
 const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
+void			print_address(const t_ping* ping, uint32_t addr);
 
 // socket.c
 int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs);
