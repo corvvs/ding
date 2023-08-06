@@ -91,6 +91,13 @@ int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) 
 #endif
 	}
 
+	{	
+		int one = 1;
+		if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof(one)) < 0) {
+			print_special_error_by_errno("setsockopt(SO_BROADCAST)");
+			return -1;
+		}
+	}
 	if (apply_socket_options_by_prefs(prefs, sock)) {
 		return -1;
 	}
