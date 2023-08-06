@@ -132,8 +132,8 @@ typedef struct s_preferences
 	char		data_pattern[MAX_DATA_PATTERN_LEN + 1];
 	// IPタイムスタンプ種別
 	t_ip_timestamp_type	ip_ts_type;
-	// IPタイムスタンプの送信元アドレスを解決するかどうか
-	bool		dont_resolve_addr_in_ip_ts;
+	// 戻りパケット処理時にアドレスを解決するかどうか
+	bool		dont_resolve_addr_received;
 	// flood
 	bool		flood;
 	// ユーザ指定送信元アドレス
@@ -158,6 +158,10 @@ typedef struct s_session
 	char				resolved_host[16];
 	// IPアドレス構造体
 	socket_address_in_t	addr_to;
+	// IPアドレス
+	uint32_t			addr_to_ip;
+	// given_host -> resolved_host が実質的な変換を伴ったかどうか
+	bool				effectively_resolved;
 	// セッション開始時刻
 	timeval_t			start_time;
 	// ICMP シーケンス

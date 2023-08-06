@@ -1,37 +1,16 @@
 #include "ping.h"
 extern int	g_is_little_endian;
 
-static char*	resolve_ipaddr_to_host(uint32_t addr) {
-	static char			hostname[NI_MAXHOST];
-	const char*			addr_str = stringify_serialized_address(addr);
-	socket_address_in_t	sa = { .sin_family = AF_INET };
-	errno = 0;
-	if (inet_pton(AF_INET, addr_str, &sa.sin_addr) != 1) {
-		DEBUGWARN("failed to inet_pton for %s: %s", addr_str, strerror(errno));
-		return NULL;
+static const char*	resolve_ipaddr_to_host(const t_ping* ping, uint32_t addr) {
+	if (ping->target.effectively_resolved && ping->target.addr_to_ip == addr) {
+		return ping->target.given_host;
 	}
-	errno = 0;
-	int rv = getnameinfo(
-		(struct sockaddr*)&sa,
-		sizeof(struct sockaddr_in),
-		hostname,
-		sizeof(hostname),
-		NULL,
-		0,
-		NI_NAMEREQD
-	);
-	if (rv) {
-		if (errno) {
-			DEBUGWARN("failed to getnameinfo for %s: %s", addr_str, strerror(errno));
-		}
-		return NULL;
-	}
-	return hostname;
+	return NULL;
 }
 
-static void	print_address_within_timestamp(uint32_t addr, bool try_to_resolve_host) {
+static void	print_address_within_timestamp(const t_ping* ping, uint32_t addr, bool try_to_resolve_host) {
 	if (try_to_resolve_host) {
-		char*	hostname = resolve_ipaddr_to_host(addr);
+		const char*	hostname = resolve_ipaddr_to_host(ping, addr);
 		if (hostname != NULL) {
 			printf("\t%s (%s)", hostname, stringify_address((const void*)&addr));
 			return;
@@ -92,8 +71,8 @@ void	print_ip_timestamp(
 	bool			is_first = true;
 	const size_t	ts_len = ip_header_options_pointer - (IPOPT_MINOFF + 1);
 	uint8_t			ts_buffer[ts_len];
-	const bool		try_to_resolve_host = !ping->prefs.dont_resolve_addr_in_ip_ts;
-	ft_memcpy(ts_buffer, ip_header_options + IPOPT_MINOFF, ts_len);
+	const bool		try_to_resolve_host = !ping->prefs.dont_resolve_addr_received;
+	ft_memcpy(ts_buffer, ip_header_options + IPOPT_MINOFF, ts_len); // メモリアライメント違反を避けるためにコピー
 	for (size_t	i = 0; i < ts_len; i += unit_size) {
 		if (is_first) { printf("TS:"); }
 		size_t	j = i;
@@ -102,7 +81,7 @@ void	print_ip_timestamp(
 			// -n オプションが指定されている場合はホストを解決せず, アドレスのみを表示する.
 			// そうでない場合はホストの解決を試み, 成功した場合はそれを表示する.
 			uint32_t addr = *(uint32_t*)&ts_buffer[j];
-			print_address_within_timestamp(addr, try_to_resolve_host);
+			print_address_within_timestamp(ping, addr, try_to_resolve_host);
 			j += sizeof(uint32_t);
 		}
 

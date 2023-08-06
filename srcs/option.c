@@ -8,7 +8,7 @@
 // verbose
 #define OPTION_VERBOSE(f)          f('v', "verbose",        pref->verbose)
 // dont resolve address in ip timestamp
-#define OPTION_NUMERIC(f)          f('n', "numeric",        pref->dont_resolve_addr_in_ip_ts)
+#define OPTION_NUMERIC(f)          f('n', "numeric",        pref->dont_resolve_addr_received)
 // bypass routing - ルーティングを無視する; このマシンと直接繋がっているノードにしかpingが届かなくなる
 #define OPTION_IGNORE_ROUTING(f)   f('r', "ignore-routing", pref->bypass_routing)
 // hexdump received
