@@ -229,7 +229,7 @@ user    0m0.003s
 sys     0m0.005s
 root@0c2c12aecb07:/home# time ./ft_ping -c1 -m3 google.com
 PING google.com (142.250.198.14): 56 data bytes
-64 bytes from 142.250.198.14: icmp_seq=0 ttl=62 time=10.582 ms # 本来はおかしい。
+64 bytes from 142.250.198.14: icmp_seq=0 ttl=62 time=10.582 ms # 本来到達してしまうのはおかしい。
 --- google.com ping statistics ---
 1 packets transmitted, 1 packets received, 0% packet loss
 round-trip min/avg/max/stddev = 10.582/10.582/10.582/0.000 ms
