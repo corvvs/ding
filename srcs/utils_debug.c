@@ -21,6 +21,7 @@ void	debug_hexdump(const char* label, const void* mem, size_t len) {
 }
 
 void	debug_msg_flags(const struct msghdr* msg) {
+	(void)msg;
 	// msg_flags の表示
 	DEBUGINFO("msg_flags: %x",    msg->msg_flags);
 	DEBUGINFO("MSG_EOR: %d",      !!(msg->msg_flags & MSG_EOR)); // レコードの終り
