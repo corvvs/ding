@@ -138,9 +138,9 @@ static void	print_received(
 
 // [受信処理のタイムアウトを設定する]
 static void	set_waiting_timeout(const t_ping* ping, const timeval_t* timeout) {
-	timeval_t		now = get_current_time();
+	const timeval_t	now = get_current_time();
 	const timeval_t	elapsed_from_last_ping = sub_times(&now, &ping->target.last_request_sent);
-	timeval_t	recv_timeout = sub_times(timeout, &elapsed_from_last_ping);
+	timeval_t		recv_timeout = sub_times(timeout, &elapsed_from_last_ping);
 	if (recv_timeout.tv_sec < 0 || recv_timeout.tv_usec < 0) {
 		recv_timeout = TV_NEARLY_ZERO; // ← 厳密にはゼロではない; ゼロを指定すると無限に待ってしまうため
 	}

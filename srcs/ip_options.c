@@ -2,11 +2,9 @@
 extern int	g_is_little_endian;
 
 static char*	resolve_ipaddr_to_host(uint32_t addr) {
-	socket_address_in_t	sa;
 	static char			hostname[NI_MAXHOST];
 	const char*			addr_str = stringify_serialized_address(addr);
-	ft_memset(&sa, 0, sizeof(socket_address_in_t));
-	sa.sin_family = AF_INET;
+	socket_address_in_t	sa = { .sin_family = AF_INET };
 	errno = 0;
 	if (inet_pton(AF_INET, addr_str, &sa.sin_addr) != 1) {
 		DEBUGWARN("failed to inet_pton for %s: %s", addr_str, strerror(errno));
