@@ -63,6 +63,8 @@ int	setup_target_from_host(const char* host, t_session* target) {
 		DEBUGERR("inet_pton() failed: %d(%s)", errno, strerror(errno));
 		return -1;
 	}
+	target->addr_to_ip = addr->sin_addr.s_addr;
+	target->effectively_resolved = ft_strcmp(target->given_host, target->resolved_host) != 0;
 	return 0;
 }
 
