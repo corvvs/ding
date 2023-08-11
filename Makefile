@@ -4,8 +4,8 @@ INCDIR	:=	includes
 FILES	:=	\
 			main.c\
 			ping_run.c\
-			option.c\
-			option_aux.c\
+			make_preference.c\
+			option_parser.c\
 			print_usage.c\
 			host_address.c\
 			socket.c\

@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
 	// 最初にシステムのエンディアンを求める
 	g_is_little_endian = is_little_endian();
 
-	argv += 1;
 	// NOTE: プログラム名は使用しないので飛ばす
+	argv += 1;
 
 	t_preferences	pref = {};
-	int				n_parsed_args = set_preference(argv, &pref);
+	int				n_parsed_args = make_preference(argv, &pref);
 	if (n_parsed_args < 0) {
 		return STATUS_OPERAND_FAILED;
 	}

@@ -212,8 +212,8 @@ void			ping_loop_send_ping(t_ping* ping);
 // ping_loop_wait_pong.c
 void			ping_loop_wait_pong(t_ping* ping, const timeval_t* timeout);
 
-// option.c
-int				set_preference(char** argv, t_preferences* pref_ptr);
+// make_preference.c
+int				make_preference(char** argv, t_preferences* pref_ptr);
 
 // option_aux.c
 int				parse_number(const char* str, unsigned long* out, unsigned long min, unsigned long max);

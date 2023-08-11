@@ -214,7 +214,7 @@ static	int parse_shortoption(char*** argv, bool by_root, t_preferences* pref, co
 	#undef PARSE_NUMBER_SOPT
 }
 
-int	parse_option(char** argv, bool by_root, t_preferences* pref) {
+static int	parse_option(char** argv, bool by_root, t_preferences* pref) {
 	char**	given_argv = argv;
 
 	while (*argv != NULL) {
@@ -242,7 +242,7 @@ int	parse_option(char** argv, bool by_root, t_preferences* pref) {
 	return argv - given_argv;
 }
 
-t_preferences	default_preferences(void) {
+static t_preferences	default_preferences(void) {
 	return (t_preferences){
 		.data_size = ICMP_ECHO_DEFAULT_DATAGRAM_SIZE,
 		.ip_ts_type = IP_TST_NONE,
@@ -256,7 +256,8 @@ static bool	exec_by_root(void) {
 	return getuid() == 0;
 }
 
-int	set_preference(char** argv, t_preferences* pref_ptr) {
+// コマンドライン引数 argv とデフォルト設定から, 実際に使用する設定(preference)を作成する
+int	make_preference(char** argv, t_preferences* pref_ptr) {
 	t_preferences	pref = default_preferences();
 
 	const bool		by_root = exec_by_root();
@@ -267,4 +268,3 @@ int	set_preference(char** argv, t_preferences* pref_ptr) {
 	*pref_ptr = pref;
 	return parsed_options;
 }
-
