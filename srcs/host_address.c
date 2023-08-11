@@ -49,23 +49,23 @@ static int	resolve_host(const char* given_str, char* resolved_str, size_t resolv
 	return 0;
 }
 
-int	setup_target_from_host(const char* host, t_session* target) {
+bool	setup_target_from_host(const char* host, t_session* target) {
 	// 与えられたホストをIPアドレス文字列に変換する
 	*target = (t_session){};
 	target->given_host = host;
 	if (resolve_host(target->given_host, target->resolved_host, sizeof(target->resolved_host))) {
-		return -1;
+		return false;
 	}
 	// IPアドレス文字列をアドレス構造体に変換する
 	socket_address_in_t* addr = &target->addr_to;
 	addr->sin_family = AF_INET;
 	if (inet_pton(AF_INET, target->resolved_host, &addr->sin_addr) != 1) {
 		DEBUGERR("inet_pton() failed: %d(%s)", errno, strerror(errno));
-		return -1;
+		return false;
 	}
 	target->addr_to_ip = addr->sin_addr.s_addr;
 	target->effectively_resolved = ft_strcmp(target->given_host, target->resolved_host) != 0;
-	return 0;
+	return true;
 }
 
 uint32_t	serialize_address(const address_in_t* addr) {
@@ -98,14 +98,26 @@ static const char*	resolve_ipaddr_to_host(const t_ping* ping, uint32_t addr) {
 	return NULL;
 }
 
-void	print_address(const t_ping* ping, uint32_t addr) {
+void	print_address_serialized(const t_ping* ping, uint32_t addr) {
 	const bool		try_to_resolve_host = !ping->prefs.dont_resolve_addr_received;
 	if (try_to_resolve_host) {
 		const char*	hostname = resolve_ipaddr_to_host(ping, addr);
 		if (hostname != NULL) {
-			printf("%s (%s)", hostname, stringify_address((const void*)&addr));
+			printf("%s (%s)", hostname, stringify_serialized_address(addr));
 			return;
 		}
 	}
-	printf("%s", stringify_address((const void*)&addr));
+	printf("%s", stringify_serialized_address(addr));
+}
+
+void	print_address_struct(const t_ping* ping, const address_in_t* addr) {
+	const bool		try_to_resolve_host = !ping->prefs.dont_resolve_addr_received;
+	if (try_to_resolve_host) {
+		const char*	hostname = resolve_ipaddr_to_host(ping, serialize_address(addr));
+		if (hostname != NULL) {
+			printf("%s (%s)", hostname, stringify_address((const void*)addr));
+			return;
+		}
+	}
+	printf("%s", stringify_address((const void*)addr));
 }

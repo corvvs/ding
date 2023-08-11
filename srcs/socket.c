@@ -1,5 +1,24 @@
 #include "ping.h"
 
+static int	set_sockopt_timestamp(const t_preferences* prefs, int sock) {
+	uint8_t options[MAX_IPOPTLEN] = {0};
+	const size_t unit_octets = prefs->ip_ts_type == IP_TST_TSONLY
+		? sizeof(uint32_t)
+		: (sizeof(uint32_t) + sizeof(uint32_t));
+	options[IPOPT_OPTVAL] = IPOPT_TS;
+	options[IPOPT_OLEN] = (MAX_IPOPTLEN - 4) / unit_octets * unit_octets + 4;
+	options[IPOPT_OFFSET] = IPOPT_MINOFF + 1;
+	const int8_t type = prefs->ip_ts_type == IP_TST_TSONLY
+		? IPOPT_TS_TSONLY
+		: IPOPT_TS_TSANDADDR;
+	options[IPOPT_POS_OV_FLG] = type;
+	if (setsockopt (sock, IPPROTO_IP, IP_OPTIONS, options, options[IPOPT_OLEN])) {
+		print_special_error_by_errno("setsockopt(IP_OPTIONS) (ip timestamp)");
+		return -1;
+	}
+	return 0;
+}
+
 // 設定に従い各種オプションをセット
 static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 	// TTL設定
@@ -16,13 +35,12 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 			print_special_error_by_errno("setsockopt(IP_TOS)");
 			return -1;
 		}
-		DEBUGWARN("tos set OK; %d", prefs->tos);
 	}
 
 	// ルーティングを無視する
 	if (prefs->bypass_routing) {
-		int one = 1; // boolean を有効にするには 1 を指定する
-		if (setsockopt (sock, SOL_SOCKET, SO_DONTROUTE, (char *)&one, sizeof(one))) {
+		int one = 1; // NOTE: boolean を有効にするには 1 を指定する
+		if (setsockopt(sock, SOL_SOCKET, SO_DONTROUTE, &one, sizeof(one))) {
 			print_special_error_by_errno("setsockopt(SO_DONTROUTE)");
 			return -1;
 		}
@@ -30,19 +48,7 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 
 	// IPタイムスタンプオプションをセット
 	if (prefs->ip_ts_type != IP_TST_NONE) {
-		uint8_t options[MAX_IPOPTLEN] = {0};
-		const size_t unit_octets = prefs->ip_ts_type == IP_TST_TSONLY
-			? sizeof(uint32_t)
-			: (sizeof(uint32_t) + sizeof(uint32_t));
-		options[IPOPT_OPTVAL] = IPOPT_TS;
-		options[IPOPT_OLEN] = (MAX_IPOPTLEN - 4) / unit_octets * unit_octets + 4;
-		options[IPOPT_OFFSET] = IPOPT_MINOFF + 1;
-		const int8_t type = prefs->ip_ts_type == IP_TST_TSONLY
-			? IPOPT_TS_TSONLY
-			: IPOPT_TS_TSANDADDR;
-		options[IPOPT_POS_OV_FLG] = type;
-		if (setsockopt (sock, IPPROTO_IP, IP_OPTIONS, options, options[IPOPT_OLEN])) {
-			print_special_error_by_errno("setsockopt");
+		if (set_sockopt_timestamp(prefs, sock)) {
 			return -1;
 		}
 	}

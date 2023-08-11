@@ -110,8 +110,7 @@ typedef enum e_ip_timestamp_type {
 	IP_TST_TSADDR,
 }	t_ip_timestamp_type;
 
-typedef struct s_preferences
-{
+typedef struct s_preferences {
 	// verbose モード
 	bool		verbose;
 	// request 送信数
@@ -150,8 +149,7 @@ typedef struct s_preferences
 } t_preferences;
 
 // ターゲット構造体
-typedef struct s_session
-{
+typedef struct s_session {
 	// 入力ホスト
 	const char*			given_host;
 	// 入力ホストの解決後IPアドレス文字列
@@ -176,12 +174,11 @@ typedef struct s_session
 } t_session;
 
 // マスター構造体
-typedef struct s_ping
-{
+typedef struct s_ping {
 	// 宛先によらないパラメータ
 
 	// 送信ソケット
-	int				socket_fd;
+	int				socket;
 	// pingのID
 	uint16_t		icmp_header_id;
 	// 設定
@@ -197,36 +194,42 @@ typedef struct s_ping
 	t_session		target;
 } t_ping;
 
-typedef struct	s_arguments {
-	int		argc;
-	char**	argv;
-}	t_arguments;
+// ping_run.c
+int				ping_run(t_preferences* prefs, char** hosts);
+
+// ping_loop.c
+void			ping_loop(t_ping* ping);
+
+// ping_loop_send_ping.c
+void			ping_loop_send_ping(t_ping* ping);
+
+// ping_loop_wait_pong.c
+void			ping_loop_wait_pong(t_ping* ping, const timeval_t* timeout);
 
 // option.c
-void			proceed_arguments(t_arguments* args, int n);
-int				parse_option(t_arguments* args, bool by_root, t_preferences* pref);
-t_preferences	default_preferences(void);
+int				set_preference(char** argv, t_preferences* pref_ptr);
 
 // option_aux.c
 int				parse_number(const char* str, unsigned long* out, unsigned long min, unsigned long max);
 int				parse_pattern(const char* str, char* buffer, size_t max_len);
 
-// usage.c
+// print_usage.c
 void			print_usage(void);
 
 // host_address.c
 address_info_t*	resolve_str_into_address(const char* host_str);
-int				setup_target_from_host(const char* host, t_session* target);
+bool			setup_target_from_host(const char* host, t_session* target);
 uint32_t		serialize_address(const address_in_t* addr);
 const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
-void			print_address(const t_ping* ping, uint32_t addr);
+void			print_address_serialized(const t_ping* ping, uint32_t addr);
+void			print_address_struct(const t_ping* ping, const address_in_t* addr);
 
 // socket.c
 int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs);
 
-// ping_pong.c
-int	ping_pong(t_ping* ping);
+// ping_session.c
+int	ping_session(t_ping* ping);
 
 // ping_sender.c
 int	send_request(t_ping* ping, uint16_t sequence);

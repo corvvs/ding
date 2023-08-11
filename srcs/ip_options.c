@@ -63,7 +63,7 @@ void	print_ip_timestamp(
 			// そうでない場合はホストの解決を試み, 成功した場合はそれを表示する.
 			uint32_t addr = *(uint32_t*)&ts_buffer[j];
 			printf("\t");
-			print_address(ping, addr);
+			print_address_serialized(ping, addr);
 			j += sizeof(uint32_t);
 		}
 

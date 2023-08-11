@@ -3,12 +3,16 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
+			ping_run.c\
 			option.c\
 			option_aux.c\
-			usage.c\
+			print_usage.c\
 			host_address.c\
 			socket.c\
-			ping_pong.c\
+			ping_session.c\
+			ping_loop.c\
+			ping_loop_send_ping.c\
+			ping_loop_wait_pong.c\
 			ping_sender.c\
 			pong_receiver.c\
 			ip_options.c\
