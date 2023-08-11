@@ -20,7 +20,7 @@ static void	run_sessions(t_ping* ping, char** hosts) {
 		const char*	given_host = *hosts;
 		DEBUGOUT("<start session for \"%s\">", given_host);
 
-		ping->target.stat_data = (t_stat_data){ .rtts = NULL };
+		ping->target.stat_data = (t_stat_data){ .roundtrip_times = NULL };
 
 		if (!setup_target_from_host(given_host, &ping->target)) {
 			break;
@@ -28,7 +28,7 @@ static void	run_sessions(t_ping* ping, char** hosts) {
 
 		ping_session(ping);
 
-		free(ping->target.stat_data.rtts);
+		free(ping->target.stat_data.roundtrip_times);
 	};
 }
 

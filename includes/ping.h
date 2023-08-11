@@ -20,7 +20,7 @@
 
 #define PROGRAM_NAME		"ping"
 #define ICMP_TYPE_ECHO_REQUEST	0x8
-#define ICMP_TYPE_ECHO_REPLY		0x0
+#define ICMP_TYPE_ECHO_REPLY	0x0
 #define ICMP_TYPE_TIME_EXCEEDED	0xb
 
 typedef struct timeval		timeval_t;
@@ -57,8 +57,14 @@ typedef struct sockaddr_in	socket_address_in_t;
 
 #define ICMP_ECHO_DEFAULT_DATAGRAM_SIZE (64 - 8)
 
+// `-p` オプションで指定できるデータパターンの最大長
+#define MAX_DATA_PATTERN_LEN 16
+
+// デフォルトのping(Echo)送信間隔
 #define TV_PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
+// flooding時のping(Echo)送信間隔
 #define TV_PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
+// 間隔をあけない(間隔ゼロ)時, ゼロの代わりに使う値
 #define TV_NEARLY_ZERO				(timeval_t){ .tv_sec = 0, .tv_usec = 1000 }
 
 typedef enum e_received_result {
@@ -70,6 +76,7 @@ typedef enum e_received_result {
 }	t_received_result;
 
 #define	RECV_BUFFER_LEN MAX_IPV4_DATAGRAM_SIZE
+
 // 受信データを管理する構造体
 typedef struct s_acceptance {
 	// 受信用バッファ
@@ -91,18 +98,17 @@ typedef struct s_acceptance {
 // 統計情報の元データを管理する構造体
 typedef struct s_stat_data {
 	// 送信済みパケット数
-	size_t	packets_sent;
-	// 受信済みパケット数
-	size_t	packets_received;
+	size_t	sent_icmps;
+	// タイムスタンプつきで返ってきたICMP Echo Replyの数
+	size_t	received_echo_replies_with_ts;
 	// 受信済みパケット数(Echo Reply以外も含む)
-	size_t	packets_received_any;
-	// ラウンドトリップ数
-	double*	rtts;
-	// ラウンドトリップ数のキャパシティ
-	size_t	rtts_cap;
+	size_t	received_icmps;
+	// ラウンドトリップタイム配列
+	// NOTE: サイズは received_echo_replies_with_ts に等しい
+	double*	roundtrip_times;
+	// ラウンドトリップタイム配列のキャパシティ
+	size_t	roundtrip_times_cap;
 }	t_stat_data;
-
-#define MAX_DATA_PATTERN_LEN 16
 
 typedef enum e_ip_timestamp_type {
 	IP_TST_NONE,
@@ -268,7 +274,7 @@ void	print_time_exceeded_line(
 bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
-double	mark_received(t_ping* ping, const t_acceptance* acceptance);
+double	record_received(t_ping* ping, const t_acceptance* acceptance);
 void	print_stats(const t_ping* ping);
 
 // utils_math.c

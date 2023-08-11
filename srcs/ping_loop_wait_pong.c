@@ -90,6 +90,6 @@ void	ping_loop_wait_pong(t_ping* ping, const timeval_t* timeout) {
 	}
 
 	// [受信時出力]
-	const double triptime = mark_received(ping, &acceptance);
+	const double triptime = record_received(ping, &acceptance);
 	print_received(ping, &acceptance, triptime);
 }

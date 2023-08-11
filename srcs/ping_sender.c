@@ -21,7 +21,7 @@ int	send_request(t_ping* ping, uint16_t sequence) {
 		return rv;
 	}
 
-	ping->target.stat_data.packets_sent += 1;
+	ping->target.stat_data.sent_icmps += 1;
 	if (ping->prefs.hexdump_sent) {
 		debug_hexdump("sent message", datagram_buffer, actual_datagram_size);
 	}

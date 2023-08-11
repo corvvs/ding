@@ -9,15 +9,15 @@ void	sig_int(int signal) {
 }
 
 static bool	reached_ping_limit(const t_ping* ping) {
-	return ping->prefs.count > 0 && ping->target.stat_data.packets_sent >= ping->prefs.count;
+	return ping->prefs.count > 0 && ping->target.stat_data.sent_icmps >= ping->prefs.count;
 }
 
 static bool	reached_pong_limit(const t_ping* ping) {
-	return ping->prefs.count > 0 && ping->target.stat_data.packets_received_any >= ping->prefs.count;
+	return ping->prefs.count > 0 && ping->target.stat_data.received_icmps >= ping->prefs.count;
 }
 
 static bool	can_send_ping(const t_ping* ping, bool receiving_timed_out) {
-	return ping->target.stat_data.packets_sent == 0 || (!reached_ping_limit(ping) && receiving_timed_out);
+	return ping->target.stat_data.sent_icmps == 0 || (!reached_ping_limit(ping) && receiving_timed_out);
 }
 
 static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out) {
@@ -31,9 +31,9 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 	}
 	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, recv_any: %zu, timed_out: %d",
 		ping->prefs.count,
-		ping->target.stat_data.packets_sent,
-		ping->target.stat_data.packets_received,
-		ping->target.stat_data.packets_received_any,
+		ping->target.stat_data.sent_icmps,
+		ping->target.stat_data.received_echo_replies_with_ts,
+		ping->target.stat_data.received_icmps,
 		receiving_timed_out);
 	// カウントが設定されている and 受信数がカウント以上に達した and タイムアウトした
 	if (reached_ping_limit(ping) && receiving_timed_out) {
