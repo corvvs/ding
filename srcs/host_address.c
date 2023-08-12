@@ -57,7 +57,7 @@ bool	setup_target_from_host(const char* host, t_session* target) {
 		return false;
 	}
 	// IPアドレス文字列をアドレス構造体に変換する
-	socket_address_in_t* addr = &target->addr_to;
+	socket_address_in_t* addr = &target->address_to;
 	addr->sin_family = AF_INET;
 	if (inet_pton(AF_INET, target->resolved_host, &addr->sin_addr) != 1) {
 		DEBUGERR("inet_pton() failed: %d(%s)", errno, strerror(errno));

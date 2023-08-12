@@ -32,6 +32,7 @@ typedef struct sockaddr_in	socket_address_in_t;
 
 #define MIN_IHL 5
 #define MAX_IHL 15
+#define IPV4_VER 4
 
 #define MIN_IPV4_HEADER_SIZE (MIN_IHL * 4)
 #define MAX_IPV4_HEADER_SIZE (MAX_IHL * 4)
@@ -161,7 +162,7 @@ typedef struct s_session {
 	// 入力ホストの解決後IPアドレス文字列
 	char				resolved_host[16];
 	// IPアドレス構造体
-	socket_address_in_t	addr_to;
+	socket_address_in_t	address_to;
 	// IPアドレス
 	uint32_t			addr_to_ip;
 	// given_host -> resolved_host が実質的な変換を伴ったかどうか
@@ -262,16 +263,10 @@ void		construct_icmp_datagram(
 
 // unexpected_icmp.c
 void	print_unexpected_icmp(const t_ping* ping, t_acceptance* acceptance);
-void	print_time_exceeded_line(
-	const t_ping* ping,
-	const ip_header_t* ip_header,
-	ip_header_t* original_ip,
-	size_t icmp_whole_len,
-	size_t original_icmp_whole_len
-);
+void	print_time_exceeded(const t_ping* ping, const t_acceptance* acceptance);
 
 // validator.c
-bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);
+bool	analyze_received_datagram(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	record_received(t_ping* ping, const t_acceptance* acceptance);

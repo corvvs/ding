@@ -38,9 +38,8 @@ t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 		debug_hexdump("received message", acceptance->recv_buffer, acceptance->received_len);
 	}
 
-	if (!assimilate_echo_reply(ping, acceptance)) {
+	if (!analyze_received_datagram(ping, acceptance)) {
 		return RR_UNACCEPTABLE;
 	}
 	return RR_SUCCESS;
 }
-

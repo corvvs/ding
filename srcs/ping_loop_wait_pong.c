@@ -14,6 +14,26 @@ static void	set_waiting_timeout(const t_ping* ping, const timeval_t* timeout) {
 	}
 }
 
+static void	print_echo_reply(
+	const t_ping* ping,
+	const t_acceptance* acceptance,
+	double triptime
+) {
+	const ip_header_t*	ip_header = acceptance->ip_header;
+	icmp_header_t*		icmp_header = acceptance->icmp_header;
+	const size_t		icmp_whole_len = acceptance->icmp_whole_len;
+	printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
+		icmp_whole_len,
+		stringify_address(&ip_header->IP_HEADER_SRC),
+		icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
+		ip_header->IP_HEADER_TTL
+	);
+	if (ping->sending_timestamp) {
+		printf(" time=%.3f ms", triptime);
+	}
+	printf("\n");
+}
+
 static void	print_received(
 	const t_ping* ping,
 	const t_acceptance* acceptance,
@@ -24,38 +44,13 @@ static void	print_received(
 		return;
 	}
 
-	const ip_header_t*	ip_header = acceptance->ip_header;
-	icmp_header_t*		icmp_header = acceptance->icmp_header;
-	const size_t		icmp_whole_len = acceptance->icmp_whole_len;
 	switch (acceptance->icmp_header->ICMP_HEADER_TYPE) {
 		case ICMP_TYPE_ECHO_REPLY: {
-			// 本体
-			printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
-				icmp_whole_len,
-				stringify_address(&ip_header->IP_HEADER_SRC),
-				icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-				ip_header->IP_HEADER_TTL
-			);
-			if (ping->sending_timestamp) {
-				printf(" time=%.3f ms", triptime);
-			}
-			printf("\n");
+			print_echo_reply(ping, acceptance, triptime);
 			break;
 		}
 		case ICMP_TYPE_TIME_EXCEEDED: {
-			icmp_detailed_header_t*	dicmp = (icmp_detailed_header_t*)icmp_header;
-			ip_header_t*			original_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
-			const size_t			original_ip_whole_len = icmp_whole_len - ((void*)original_ip - (void*)dicmp);
-			const size_t			original_ip_header_len = original_ip->IP_HEADER_HL * 4;
-			const size_t			original_icmp_whole_len = original_ip_whole_len - original_ip_header_len;
-			// NOTE: ペイロードのオリジナルICMPの中身はカットされる可能性がある
-			// (RFCでは"64 bits of Data Datagram"としか書かれていない)
-			// ので, チェックサムは検証しない
-			if (!ping->received_ipheader_modified) {
-				flip_endian_ip(original_ip);
-			}
-
-			print_time_exceeded_line(ping, ip_header, original_ip, icmp_whole_len, original_icmp_whole_len);
+			print_time_exceeded(ping, acceptance);
 			break;
 		}
 	}
@@ -89,7 +84,7 @@ void	ping_loop_wait_pong(t_ping* ping, const timeval_t* timeout) {
 			break;
 	}
 
-	// [受信時出力]
+	// [受信できた場合は出力]
 	const double triptime = record_received(ping, &acceptance);
 	print_received(ping, &acceptance, triptime);
 }

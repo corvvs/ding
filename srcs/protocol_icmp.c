@@ -46,18 +46,18 @@ uint16_t	derive_icmp_checksum(const void* datagram, size_t len) {
 // 注意: icmp はネットワークバイトオーダーであること
 bool	is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_whole_len) {
 	uint16_t		received_checksum = icmp_header->ICMP_HEADER_CHECKSUM;
-	ip_header_t*	original_ip = NULL;
+	ip_header_t*	embedded_ip = NULL;
 	if (icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_TIME_EXCEEDED) {
 		icmp_detailed_header_t*	dicmp = (icmp_detailed_header_t*)icmp_header;
-		original_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
+		embedded_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
 	}
-	const bool		flip_original_ip = original_ip && ping->received_ipheader_modified;
+	const bool		flip_embedded_ip = embedded_ip && ping->received_ipheader_modified;
 
 	// チェックサムを0にして再計算する
 	// debug_hexdump("before cksum", icmp_header, icmp_whole_len);
 	icmp_header->ICMP_HEADER_CHECKSUM = 0;
-	if (flip_original_ip) {
-		flip_endian_ip(original_ip);
+	if (flip_embedded_ip) {
+		flip_endian_ip(embedded_ip);
 	}
 	uint16_t	derived_checksum = derive_icmp_checksum(icmp_header, icmp_whole_len);
 	DEBUGOUT("checksum: received: %u(%04x) derived: %u(%04x) diffrence: %u(%04x) icmp_whole_len: %zu",
@@ -69,8 +69,8 @@ bool	is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size
 	);
 	// チェックサムを元に戻す
 	icmp_header->ICMP_HEADER_CHECKSUM = received_checksum;
-	if (flip_original_ip) {
-		flip_endian_ip(original_ip);
+	if (flip_embedded_ip) {
+		flip_endian_ip(embedded_ip);
 	}
 	return derived_checksum == received_checksum;
 }
