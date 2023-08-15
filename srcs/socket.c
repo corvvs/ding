@@ -1,39 +1,53 @@
 #include "ping.h"
 
-static int	set_sockopt_timestamp(const t_preferences* prefs, int sock) {
-	uint8_t options[MAX_IPOPTLEN] = {0};
-	const size_t unit_octets = prefs->ip_ts_type == IP_TST_TSONLY
+// IPヘッダにIPタイムスタンプオプションをセットする
+static bool	set_sockopt_timestamp(const t_preferences* prefs, int sock) {
+	// オプション領域となるバッファ
+	uint8_t			options[MAX_IPOPTLEN] = {0};
+
+	// オプションタイプ
+	options[IPOPT_OPTVAL] = IPOPT_TS;
+
+	// レングス
+	const size_t	unit_octets = prefs->ip_ts_type == IP_TST_TSONLY
 		? sizeof(uint32_t)
 		: (sizeof(uint32_t) + sizeof(uint32_t));
-	options[IPOPT_OPTVAL] = IPOPT_TS;
-	options[IPOPT_OLEN] = (MAX_IPOPTLEN - 4) / unit_octets * unit_octets + 4;
+	const size_t	ts_fixed_octet = 4;
+	const size_t	max_memorable_units = (MAX_IPOPTLEN - ts_fixed_octet) / unit_octets;
+	options[IPOPT_OLEN] = ts_fixed_octet + max_memorable_units * unit_octets;
+
+	// ポインタ
 	options[IPOPT_OFFSET] = IPOPT_MINOFF + 1;
-	const int8_t type = prefs->ip_ts_type == IP_TST_TSONLY
+
+	// フラグ(タイムスタンプタイプ)
+	const int8_t	type = prefs->ip_ts_type == IP_TST_TSONLY
 		? IPOPT_TS_TSONLY
 		: IPOPT_TS_TSANDADDR;
 	options[IPOPT_POS_OV_FLG] = type;
-	if (setsockopt (sock, IPPROTO_IP, IP_OPTIONS, options, options[IPOPT_OLEN])) {
+
+	// バッファの内容をIPオプションとしてセット
+	if (setsockopt(sock, IPPROTO_IP, IP_OPTIONS, options, options[IPOPT_OLEN])) {
 		print_special_error_by_errno("setsockopt(IP_OPTIONS) (ip timestamp)");
-		return -1;
+		return false;
 	}
-	return 0;
+	return true;
 }
 
 // 設定に従い各種オプションをセット
-static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
+static bool	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 	// TTL設定
 	if (prefs->ttl > 0) {
-		if (setsockopt(sock, IPPROTO_IP, IP_TTL, &prefs->ttl, sizeof(prefs->ttl)) < 0) {
+		if (setsockopt(sock, IPPROTO_IP, IP_TTL, &prefs->ttl, sizeof(prefs->ttl))) {
 			print_special_error_by_errno("setsockopt(IP_TTL)");
-			return -1;
+			return false;
 		}
 	}
 
 	// ToS設定
 	if (prefs->tos >= 0) {
-		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &prefs->tos, sizeof(prefs->tos)) < 0) {
+		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &prefs->tos, sizeof(prefs->tos))) {
 			print_special_error_by_errno("setsockopt(IP_TOS)");
-			return -1;
+			return false;
 		}
 	}
 
@@ -42,14 +56,14 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 		int one = 1; // NOTE: boolean を有効にするには 1 を指定する
 		if (setsockopt(sock, SOL_SOCKET, SO_DONTROUTE, &one, sizeof(one))) {
 			print_special_error_by_errno("setsockopt(SO_DONTROUTE)");
-			return -1;
+			return false;
 		}
 	}
 
 	// IPタイムスタンプオプションをセット
 	if (prefs->ip_ts_type != IP_TST_NONE) {
-		if (set_sockopt_timestamp(prefs, sock)) {
-			return -1;
+		if (!set_sockopt_timestamp(prefs, sock)) {
+			return false;
 		}
 	}
 
@@ -59,21 +73,22 @@ static int	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
 		address_info_t* source_address = resolve_str_into_address(prefs->given_source_address);
 		if (source_address == NULL) {
 			print_special_error_by_errno("source addr failed");
-			return -1;
+			return false;
 		}
 		// ソケットにソースアドレスを設定
 		int	rv = bind(sock, source_address->ai_addr, source_address->ai_addrlen);
 		freeaddrinfo(source_address);
 		if (rv) {
 			print_special_error_by_errno("bind");
-			return -1;
+			return false;
 		}
 		DEBUGINFO("binded sock %d to %s", sock, prefs->given_source_address);
 	}
-	return 0;
+	return true;
 }
 
-// ICMPソケットを作成する
+// ICMPソケットを作成し, そのFDを返す.
+// 失敗した場合は負の値を返す.
 int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) {
 	// ソケット生成
 	errno = 0;
@@ -99,12 +114,15 @@ int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) 
 
 	{	
 		int one = 1;
-		if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof(one)) < 0) {
+		if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof(one))) {
+			close(sock);
 			print_special_error_by_errno("setsockopt(SO_BROADCAST)");
 			return -1;
 		}
 	}
-	if (apply_socket_options_by_prefs(prefs, sock)) {
+	// ソケットに対してオプションをセット
+	if (!apply_socket_options_by_prefs(prefs, sock)) {
+		close(sock);
 		return -1;
 	}
 

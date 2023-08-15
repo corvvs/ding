@@ -2,16 +2,15 @@
 extern int	g_is_little_endian;
 
 // mem をIPヘッダとして, 必要ならエンディアン変換を行う
-void	flip_endian_icmp(void* mem) {
+void	flip_endian_icmp(icmp_header_t* icmp_hd) {
 	if (!g_is_little_endian) { return; }
 
-	icmp_header_t*	hd = (icmp_header_t*)mem;
-	hd->ICMP_HEADER_TYPE = SWAP_NEEDED(hd->ICMP_HEADER_TYPE);
-	hd->ICMP_HEADER_CODE = SWAP_NEEDED(hd->ICMP_HEADER_CODE);
-	hd->ICMP_HEADER_CHECKSUM = SWAP_NEEDED(hd->ICMP_HEADER_CHECKSUM);
-	if (hd->ICMP_HEADER_TYPE == ICMP_ECHO || hd->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY) {
-		hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID);
-		hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ);
+	icmp_hd->ICMP_HEADER_TYPE = SWAP_NEEDED(icmp_hd->ICMP_HEADER_TYPE);
+	icmp_hd->ICMP_HEADER_CODE = SWAP_NEEDED(icmp_hd->ICMP_HEADER_CODE);
+	icmp_hd->ICMP_HEADER_CHECKSUM = SWAP_NEEDED(icmp_hd->ICMP_HEADER_CHECKSUM);
+	if (icmp_hd->ICMP_HEADER_TYPE == ICMP_ECHO || icmp_hd->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY) {
+		icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_ID);
+		icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(icmp_hd->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ);
 	}
 }
 
@@ -44,28 +43,32 @@ uint16_t	derive_icmp_checksum(const void* datagram, size_t len) {
 // ICMPデータグラムのチェックサムが正しいかどうか検証する
 // チェックサム計算の際, 一時的にデータを変更するので const がつかないが, 最終的には変更なしで返す
 // 注意: icmp はネットワークバイトオーダーであること
-bool	is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_whole_len) {
+bool	is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_datagram_size) {
 	uint16_t		received_checksum = icmp_header->ICMP_HEADER_CHECKSUM;
 	ip_header_t*	embedded_ip = NULL;
 	if (icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_TIME_EXCEEDED) {
 		icmp_detailed_header_t*	dicmp = (icmp_detailed_header_t*)icmp_header;
-		embedded_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_ORIGINAL_IP);
+		embedded_ip = (ip_header_t*)&(dicmp->ICMP_DHEADER_EMBEDDED_IP);
 	}
-	const bool		flip_embedded_ip = embedded_ip && ping->received_ipheader_modified;
 
 	// チェックサムを0にして再計算する
-	// debug_hexdump("before cksum", icmp_header, icmp_whole_len);
+	// debug_hexdump("before cksum", icmp_header, icmp_datagram_size);
 	icmp_header->ICMP_HEADER_CHECKSUM = 0;
+	// NOTE: mac では, ICMPペイロード内にIPデータグラムが埋め込まれている場合
+	// そちらのIPヘッダもエンディアン変換されているので,
+	// そのままチェックサムを計算すると合わない
+	// -> オリジナルIPヘッダのエンディアンを元に戻して計算する
+	const bool	flip_embedded_ip = embedded_ip && ping->received_ipheader_modified;
 	if (flip_embedded_ip) {
 		flip_endian_ip(embedded_ip);
 	}
-	uint16_t	derived_checksum = derive_icmp_checksum(icmp_header, icmp_whole_len);
-	DEBUGOUT("checksum: received: %u(%04x) derived: %u(%04x) diffrence: %u(%04x) icmp_whole_len: %zu",
+	uint16_t	derived_checksum = derive_icmp_checksum(icmp_header, icmp_datagram_size);
+	DEBUGOUT("checksum: received: %u(%04x) derived: %u(%04x) difference: %u(%04x) icmp_datagram_size: %zu",
 		received_checksum, received_checksum,
 		derived_checksum, derived_checksum,
 		(received_checksum - derived_checksum),
 		(received_checksum - derived_checksum),
-		icmp_whole_len
+		icmp_datagram_size
 	);
 	// チェックサムを元に戻す
 	icmp_header->ICMP_HEADER_CHECKSUM = received_checksum;

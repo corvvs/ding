@@ -30,12 +30,13 @@ typedef struct sockaddr_in	socket_address_in_t;
 #include "compatibility.h"
 
 
-#define MIN_IHL 5
-#define MAX_IHL 15
-#define IPV4_VER 4
+#define MIN_IHL					5
+#define MAX_IHL					15
+#define IP_SUPPORTED_VERSION	4
 
-#define MIN_IPV4_HEADER_SIZE (MIN_IHL * 4)
-#define MAX_IPV4_HEADER_SIZE (MAX_IHL * 4)
+#define OCTETS_IN_32BITS		4
+#define MIN_IPV4_HEADER_SIZE	(MIN_IHL * OCTETS_IN_32BITS)
+#define MAX_IPV4_HEADER_SIZE	(MAX_IHL * OCTETS_IN_32BITS)
 #ifndef MAX_IPOPTLEN
 # define MAX_IPOPTLEN (MAX_IPV4_HEADER_SIZE - MIN_IPV4_HEADER_SIZE)
 #endif
@@ -90,8 +91,8 @@ typedef struct s_acceptance {
 	ip_header_t*	ip_header;
 	// ICMPヘッダ
 	icmp_header_t*	icmp_header;
-	// ICMP全体サイズ
-	size_t			icmp_whole_len;
+	// ICMPデータグラムサイズ
+	size_t			icmp_datagram_size;
 	// 受信時刻
 	timeval_t		epoch_received;
 }	t_acceptance;
@@ -244,16 +245,14 @@ int	send_request(t_ping* ping, uint16_t sequence);
 // pong_receiver.c
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
-// ip_options.c
-void	print_ip_timestamp(const t_ping* ping, const t_acceptance* acceptance);
-
 // protocol_ip.c
-void		flip_endian_ip(void* mem);
+void		flip_endian_ip(ip_header_t* header);
+size_t		ihl_to_octets(size_t ihl);
 
 // protocol_icmp.c
-void		flip_endian_icmp(void* mem);
+void		flip_endian_icmp(icmp_header_t* header);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
-bool		is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_whole_len);
+bool		is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_datagram_size);
 void		construct_icmp_datagram(
 	const t_ping* ping,
 	uint8_t* datagram_buffer,
@@ -261,11 +260,16 @@ void		construct_icmp_datagram(
 	uint16_t sequence
 );
 
-// unexpected_icmp.c
-void	print_unexpected_icmp(const t_ping* ping, t_acceptance* acceptance);
+// print_echo_reply.c
+void	print_echo_reply(const t_ping* ping, const t_acceptance* acceptance, double triptime);
+
+// print_time_exceeded.c
 void	print_time_exceeded(const t_ping* ping, const t_acceptance* acceptance);
 
-// validator.c
+// print_ip_timestamp.c
+void		print_ip_timestamp(const t_ping* ping, const t_acceptance* acceptance);
+
+// analyze_received_datagram.c
 bool	analyze_received_datagram(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c

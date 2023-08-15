@@ -12,7 +12,7 @@ static double	push_roundtrip_time(t_stat_data* stat_data, const t_acceptance* ac
 	// NOTE: メモリアライメント違反を防ぐため, 一旦別バッファにコピーしてからアクセスする
 	uint8_t				buffer_sent[sizeof(timeval_t)];
 	const ip_header_t*	ip_header = (const ip_header_t*)acceptance->recv_buffer;
-	const size_t		ip_header_len = ip_header->IP_HEADER_HL * 4;
+	const size_t		ip_header_len = ihl_to_octets(ip_header->IP_HEADER_HL);
 	const uint8_t*		received_icmp = acceptance->recv_buffer + ip_header_len;
 	ft_memcpy(buffer_sent, received_icmp + sizeof(icmp_header_t), sizeof(timeval_t));
 

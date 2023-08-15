@@ -15,11 +15,12 @@ FILES	:=	\
 			ping_loop_wait_pong.c\
 			ping_sender.c\
 			pong_receiver.c\
-			ip_options.c\
 			protocol_ip.c\
 			protocol_icmp.c\
-			unexpected_icmp.c\
-			validator.c\
+			print_echo_reply.c\
+			print_time_exceeded.c\
+			print_ip_timestamp.c\
+			analyze_received_datagram.c\
 			stats.c\
 			utils_math.c\
 			utils_endian.c\

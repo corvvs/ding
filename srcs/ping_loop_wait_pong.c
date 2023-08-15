@@ -14,26 +14,6 @@ static void	set_waiting_timeout(const t_ping* ping, const timeval_t* timeout) {
 	}
 }
 
-static void	print_echo_reply(
-	const t_ping* ping,
-	const t_acceptance* acceptance,
-	double triptime
-) {
-	const ip_header_t*	ip_header = acceptance->ip_header;
-	icmp_header_t*		icmp_header = acceptance->icmp_header;
-	const size_t		icmp_whole_len = acceptance->icmp_whole_len;
-	printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
-		icmp_whole_len,
-		stringify_address(&ip_header->IP_HEADER_SRC),
-		icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
-		ip_header->IP_HEADER_TTL
-	);
-	if (ping->sending_timestamp) {
-		printf(" time=%.3f ms", triptime);
-	}
-	printf("\n");
-}
-
 static void	print_received(
 	const t_ping* ping,
 	const t_acceptance* acceptance,
