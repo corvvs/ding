@@ -15,7 +15,7 @@
 #define OPTION_HEXDUMP_RECEIVED(f) f('x', "hexdump",        pref->hexdump_received)
 // hexdump sent
 #define OPTION_HEXDUMP_SENT(f)     f('X', "hexdump-sent",   pref->hexdump_sent)
-// show usage
+// show print_usage
 #define OPTION_HELP(f)             f('?', "help",           pref->show_usage)
 
 // count - 送信するping(ICMP Echo)の数
@@ -33,22 +33,17 @@
 // ToS - 送信するIPデータグラムのToS
 #define OPTION_TOS(f)            f('T', "tos",     pref->tos, 0, 255)
 
-void	proceed_arguments(t_arguments* args, int n) {
-	args->argc -= n;
-	args->argv += n;
-}
-
 // argv を1つ進める
 #define PRECEDE_NEXT_ARG \
-	proceed_arguments(args, 1)
+	*argv += 1
 
 // argv を1つ引数用として進める
 #define PICK_NEXT_ARG \
-	if (args->argc < 2) {\
+	PRECEDE_NEXT_ARG;\
+	if (**argv == NULL) {\
 		dprintf(STDERR_FILENO, PROGRAM_NAME ": option requires an argument -- '%c'\n", *arg);\
 		return -1;\
-	}\
-	PRECEDE_NEXT_ARG
+	}
 
 // arg を1文字進める
 // 進められない場合はargvを1つ進める
@@ -57,7 +52,7 @@ void	proceed_arguments(t_arguments* args, int n) {
 		++arg;\
 	} else {\
 		PICK_NEXT_ARG;\
-		arg = *args->argv;\
+		arg = **argv;\
 	}\
 
 // argを最後まで進める
@@ -65,7 +60,7 @@ void	proceed_arguments(t_arguments* args, int n) {
 	arg = *arg ? (arg + ft_strlen(arg) - 1) : arg
 
 // ロングオプション解析
-static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref, const char* arg) {
+static	int parse_longoption(char*** argv, bool by_root, t_preferences* pref, const char* arg) {
 	// フラグ ロングオプションのラッパー
 	#define PARSE_FLAG_LOPT(_, str, store)\
 		if (ft_strcmp(long_opt, str) == 0) {\
@@ -81,7 +76,7 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 				long_opt += tail + 1;\
 			} else {\
 				PICK_NEXT_ARG;\
-				long_opt = *args->argv;\
+				long_opt = **argv;\
 			}\
 			block\
 			PRECEDE_NEXT_ARG;\
@@ -140,7 +135,7 @@ static	int parse_longoption(t_arguments* args, bool by_root, t_preferences* pref
 
 
 // ショートオプション解析
-static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pref, const char* arg) {
+static	int parse_shortoption(char*** argv, bool by_root, t_preferences* pref, const char* arg) {
 	// フラグ ショートオプションのラッパー
 	#define PARSE_FLAG_SOPT(ch, _, store) case ch: {\
 		store = true;\
@@ -219,11 +214,12 @@ static	int parse_shortoption(t_arguments* args, bool by_root, t_preferences* pre
 	#undef PARSE_NUMBER_SOPT
 }
 
-int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
+static int	parse_option(char** argv, bool by_root, t_preferences* pref) {
+	char**	given_argv = argv;
 
-	while (args->argc > 0) {
-		const char*	arg = *args->argv;
-		DEBUGOUT("argc: %d, arg: %s", args->argc, arg);
+	while (*argv != NULL) {
+		const char*	arg = *argv;
+		DEBUGOUT("arg: %s", arg);
 		if (arg == NULL) {
 			// ありえないはずだが・・・
 			DEBUGERR("%s", "argv has an NULL");
@@ -234,19 +230,19 @@ int	parse_option(t_arguments* args, bool by_root, t_preferences* pref) {
 			break;
 		}
 		if (ft_strncmp(arg, "--", 2) == 0) {
-			if (parse_longoption(args, by_root, pref, arg)) {
+			if (parse_longoption(&argv, by_root, pref, arg)) {
 				return -1;
 			}
 		} else {
-			if (parse_shortoption(args, by_root, pref, arg)) {
+			if (parse_shortoption(&argv, by_root, pref, arg)) {
 				return -1;
 			}
 		}
 	}
-	return 0;
+	return argv - given_argv;
 }
 
-t_preferences	default_preferences(void) {
+static t_preferences	default_preferences(void) {
 	return (t_preferences){
 		.data_size = ICMP_ECHO_DEFAULT_DATAGRAM_SIZE,
 		.ip_ts_type = IP_TST_NONE,
@@ -254,4 +250,21 @@ t_preferences	default_preferences(void) {
 		.wait_after_final_request_s = 10,
 		.tos = -1,
 	};
+}
+
+static bool	exec_by_root(void) {
+	return getuid() == 0;
+}
+
+// コマンドライン引数 argv とデフォルト設定から, 実際に使用する設定(preference)を作成する
+int	make_preference(char** argv, t_preferences* pref_ptr) {
+	t_preferences	pref = default_preferences();
+
+	const bool		by_root = exec_by_root();
+	int parsed_options = parse_option(argv, by_root, &pref);
+	if (parsed_options < 0) {
+		return -1;
+	}
+	*pref_ptr = pref;
+	return parsed_options;
 }

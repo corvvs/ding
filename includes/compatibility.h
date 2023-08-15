@@ -7,7 +7,7 @@ typedef struct ip ip_header_t;
 #define IP_HEADER_VER ip_v
 #define IP_HEADER_HL ip_hl
 #define IP_HEADER_TOS ip_tos
-#define IP_HEADER_LEN ip_len
+#define IP_HEADER_TOTLEN ip_len
 #define IP_HEADER_ID ip_id
 #define IP_HEADER_OFF ip_off
 #define IP_HEADER_TTL ip_ttl
@@ -38,7 +38,7 @@ typedef struct icmp icmp_detailed_header_t;
 #define ICMP_DHEADER_TYPE icmp_type
 #define ICMP_DHEADER_CODE icmp_code
 #define ICMP_DHEADER_CHECKSUM icmp_cksum
-#define ICMP_DHEADER_ORIGINAL_IP icmp_dun.id_ip.idi_ip
+#define ICMP_DHEADER_EMBEDDED_IP icmp_dun.id_ip.idi_ip
 
 #define U64T "%llu"
 
@@ -48,7 +48,7 @@ typedef struct iphdr ip_header_t;
 #define IP_HEADER_VER version
 #define IP_HEADER_HL ihl
 #define IP_HEADER_TOS tos
-#define IP_HEADER_LEN tot_len
+#define IP_HEADER_TOTLEN tot_len
 #define IP_HEADER_ID id
 #define IP_HEADER_OFF frag_off
 #define IP_HEADER_TTL ttl
@@ -70,7 +70,7 @@ typedef struct icmp icmp_detailed_header_t;
 #define ICMP_DHEADER_TYPE icmp_type
 #define ICMP_DHEADER_CODE icmp_code
 #define ICMP_DHEADER_CHECKSUM icmp_cksum
-#define ICMP_DHEADER_ORIGINAL_IP icmp_dun.id_ip.idi_ip
+#define ICMP_DHEADER_EMBEDDED_IP icmp_dun.id_ip.idi_ip
 
 #define U64T "%lu"
 

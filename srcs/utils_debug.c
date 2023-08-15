@@ -35,9 +35,9 @@ void	debug_ip_header(const void* mem) {
 	const ip_header_t*	ip_hd = (const ip_header_t*) mem;
 	dprintf(STDERR_FILENO, "ip_header_t:\n");
 	dprintf(STDERR_FILENO, "  ip_v: %u\n", ip_hd->IP_HEADER_VER);
-	dprintf(STDERR_FILENO, "  ip_hl: %u(-> %u)\n", ip_hd->IP_HEADER_HL, ip_hd->IP_HEADER_HL * 4);
+	dprintf(STDERR_FILENO, "  ip_hl: %u(-> %zu)\n", ip_hd->IP_HEADER_HL, ihl_to_octets(ip_hd->IP_HEADER_HL));
 	dprintf(STDERR_FILENO, "  ip_tos: %u(%X)\n", ip_hd->IP_HEADER_TOS, ip_hd->IP_HEADER_TOS);
-	dprintf(STDERR_FILENO, "  ip_len: %u(%X)\n", ip_hd->IP_HEADER_LEN, ip_hd->IP_HEADER_LEN);
+	dprintf(STDERR_FILENO, "  ip_len: %u(%X)\n", ip_hd->IP_HEADER_TOTLEN, ip_hd->IP_HEADER_TOTLEN);
 	dprintf(STDERR_FILENO, "  ip_id: %u\n", ip_hd->IP_HEADER_ID);
 	dprintf(STDERR_FILENO, "  ip_off: %u\n", ip_hd->IP_HEADER_OFF);
 	dprintf(STDERR_FILENO, "  ip_ttl: %u\n", ip_hd->IP_HEADER_TTL);

@@ -1,16 +1,18 @@
 #include "ping.h"
 
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
-	struct msghdr		msg_received;
-	struct iovec		iov_received;
-	ft_memset(&msg_received, 0, sizeof(msg_received));
-	msg_received.msg_name = NULL;
-	msg_received.msg_namelen = 0;
-	msg_received.msg_iov = &iov_received;
-	msg_received.msg_iovlen = 1;
-	iov_received.iov_base = acceptance->recv_buffer;
-	iov_received.iov_len = acceptance->recv_buffer_len;
-	int rv = recvmsg(ping->socket_fd, &msg_received, 0);
+	struct iovec	iov_received = {
+		.iov_base	= acceptance->recv_buffer,
+		.iov_len	= acceptance->recv_buffer_len,
+	};
+	struct msghdr	msg_received = {
+		.msg_name		= NULL,
+		.msg_namelen	= 0,
+		.msg_iov		= &iov_received,
+		.msg_iovlen		= 1,
+	};
+
+	int rv = recvmsg(ping->socket, &msg_received, 0);
 	DEBUGOUT("recvmsg rv: %d", rv);
 	if (rv < 0) {
 		if (errno == EAGAIN) {
@@ -29,15 +31,15 @@ t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance) {
 		DEBUGERR("socket has been closed UNEXPECTEDLY: %d(%s)", errno, strerror(errno));
 		exit(-1);
 	}
+
 	acceptance->epoch_received = get_current_time();
 	acceptance->received_len = rv;
 	if (ping->prefs.hexdump_received) {
 		debug_hexdump("received message", acceptance->recv_buffer, acceptance->received_len);
 	}
 
-	if (!assimilate_echo_reply(ping, acceptance)) {
+	if (!analyze_received_datagram(ping, acceptance)) {
 		return RR_UNACCEPTABLE;
 	}
 	return RR_SUCCESS;
 }
-

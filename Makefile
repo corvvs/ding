@@ -3,19 +3,24 @@ OBJDIR	:=	objs
 INCDIR	:=	includes
 FILES	:=	\
 			main.c\
-			option.c\
-			option_aux.c\
-			usage.c\
+			ping_run.c\
+			make_preference.c\
+			option_parser.c\
+			print_usage.c\
 			host_address.c\
 			socket.c\
-			ping_pong.c\
+			ping_session.c\
+			ping_loop.c\
+			ping_loop_send_ping.c\
+			ping_loop_wait_pong.c\
 			ping_sender.c\
 			pong_receiver.c\
-			ip_options.c\
 			protocol_ip.c\
 			protocol_icmp.c\
-			unexpected_icmp.c\
-			validator.c\
+			print_echo_reply.c\
+			print_time_exceeded.c\
+			print_ip_timestamp.c\
+			analyze_received_datagram.c\
 			stats.c\
 			utils_math.c\
 			utils_endian.c\

@@ -20,7 +20,7 @@
 
 #define PROGRAM_NAME		"ping"
 #define ICMP_TYPE_ECHO_REQUEST	0x8
-#define ICMP_TYPE_ECHO_REPLY		0x0
+#define ICMP_TYPE_ECHO_REPLY	0x0
 #define ICMP_TYPE_TIME_EXCEEDED	0xb
 
 typedef struct timeval		timeval_t;
@@ -30,11 +30,13 @@ typedef struct sockaddr_in	socket_address_in_t;
 #include "compatibility.h"
 
 
-#define MIN_IHL 5
-#define MAX_IHL 15
+#define MIN_IHL					5
+#define MAX_IHL					15
+#define IP_SUPPORTED_VERSION	4
 
-#define MIN_IPV4_HEADER_SIZE (MIN_IHL * 4)
-#define MAX_IPV4_HEADER_SIZE (MAX_IHL * 4)
+#define OCTETS_IN_32BITS		4
+#define MIN_IPV4_HEADER_SIZE	(MIN_IHL * OCTETS_IN_32BITS)
+#define MAX_IPV4_HEADER_SIZE	(MAX_IHL * OCTETS_IN_32BITS)
 #ifndef MAX_IPOPTLEN
 # define MAX_IPOPTLEN (MAX_IPV4_HEADER_SIZE - MIN_IPV4_HEADER_SIZE)
 #endif
@@ -57,8 +59,14 @@ typedef struct sockaddr_in	socket_address_in_t;
 
 #define ICMP_ECHO_DEFAULT_DATAGRAM_SIZE (64 - 8)
 
+// `-p` オプションで指定できるデータパターンの最大長
+#define MAX_DATA_PATTERN_LEN 16
+
+// デフォルトのping(Echo)送信間隔
 #define TV_PING_DEFAULT_INTERVAL	(timeval_t){ .tv_sec = 1, .tv_usec = 0 }
+// flooding時のping(Echo)送信間隔
 #define TV_PING_FLOOD_INTERVAL		(timeval_t){ .tv_sec = 0, .tv_usec = 10000 }
+// 間隔をあけない(間隔ゼロ)時, ゼロの代わりに使う値
 #define TV_NEARLY_ZERO				(timeval_t){ .tv_sec = 0, .tv_usec = 1000 }
 
 typedef enum e_received_result {
@@ -70,6 +78,7 @@ typedef enum e_received_result {
 }	t_received_result;
 
 #define	RECV_BUFFER_LEN MAX_IPV4_DATAGRAM_SIZE
+
 // 受信データを管理する構造体
 typedef struct s_acceptance {
 	// 受信用バッファ
@@ -82,8 +91,8 @@ typedef struct s_acceptance {
 	ip_header_t*	ip_header;
 	// ICMPヘッダ
 	icmp_header_t*	icmp_header;
-	// ICMP全体サイズ
-	size_t			icmp_whole_len;
+	// ICMPデータグラムサイズ
+	size_t			icmp_datagram_size;
 	// 受信時刻
 	timeval_t		epoch_received;
 }	t_acceptance;
@@ -91,18 +100,17 @@ typedef struct s_acceptance {
 // 統計情報の元データを管理する構造体
 typedef struct s_stat_data {
 	// 送信済みパケット数
-	size_t	packets_sent;
-	// 受信済みパケット数
-	size_t	packets_received;
+	size_t	sent_icmps;
+	// タイムスタンプつきで返ってきたICMP Echo Replyの数
+	size_t	received_echo_replies_with_ts;
 	// 受信済みパケット数(Echo Reply以外も含む)
-	size_t	packets_received_any;
-	// ラウンドトリップ数
-	double*	rtts;
-	// ラウンドトリップ数のキャパシティ
-	size_t	rtts_cap;
+	size_t	received_icmps;
+	// ラウンドトリップタイム配列
+	// NOTE: サイズは received_echo_replies_with_ts に等しい
+	double*	roundtrip_times;
+	// ラウンドトリップタイム配列のキャパシティ
+	size_t	roundtrip_times_cap;
 }	t_stat_data;
-
-#define MAX_DATA_PATTERN_LEN 16
 
 typedef enum e_ip_timestamp_type {
 	IP_TST_NONE,
@@ -110,8 +118,7 @@ typedef enum e_ip_timestamp_type {
 	IP_TST_TSADDR,
 }	t_ip_timestamp_type;
 
-typedef struct s_preferences
-{
+typedef struct s_preferences {
 	// verbose モード
 	bool		verbose;
 	// request 送信数
@@ -150,14 +157,13 @@ typedef struct s_preferences
 } t_preferences;
 
 // ターゲット構造体
-typedef struct s_session
-{
+typedef struct s_session {
 	// 入力ホスト
 	const char*			given_host;
 	// 入力ホストの解決後IPアドレス文字列
 	char				resolved_host[16];
 	// IPアドレス構造体
-	socket_address_in_t	addr_to;
+	socket_address_in_t	address_to;
 	// IPアドレス
 	uint32_t			addr_to_ip;
 	// given_host -> resolved_host が実質的な変換を伴ったかどうか
@@ -176,12 +182,11 @@ typedef struct s_session
 } t_session;
 
 // マスター構造体
-typedef struct s_ping
-{
+typedef struct s_ping {
 	// 宛先によらないパラメータ
 
 	// 送信ソケット
-	int				socket_fd;
+	int				socket;
 	// pingのID
 	uint16_t		icmp_header_id;
 	// 設定
@@ -197,36 +202,42 @@ typedef struct s_ping
 	t_session		target;
 } t_ping;
 
-typedef struct	s_arguments {
-	int		argc;
-	char**	argv;
-}	t_arguments;
+// ping_run.c
+int				ping_run(t_preferences* prefs, char** hosts);
 
-// option.c
-void			proceed_arguments(t_arguments* args, int n);
-int				parse_option(t_arguments* args, bool by_root, t_preferences* pref);
-t_preferences	default_preferences(void);
+// ping_loop.c
+void			ping_loop(t_ping* ping);
+
+// ping_loop_send_ping.c
+void			ping_loop_send_ping(t_ping* ping);
+
+// ping_loop_wait_pong.c
+void			ping_loop_wait_pong(t_ping* ping, const timeval_t* timeout);
+
+// make_preference.c
+int				make_preference(char** argv, t_preferences* pref_ptr);
 
 // option_aux.c
 int				parse_number(const char* str, unsigned long* out, unsigned long min, unsigned long max);
 int				parse_pattern(const char* str, char* buffer, size_t max_len);
 
-// usage.c
+// print_usage.c
 void			print_usage(void);
 
 // host_address.c
 address_info_t*	resolve_str_into_address(const char* host_str);
-int				setup_target_from_host(const char* host, t_session* target);
+bool			setup_target_from_host(const char* host, t_session* target);
 uint32_t		serialize_address(const address_in_t* addr);
 const char*		stringify_serialized_address(uint32_t addr32);
 const char*		stringify_address(const address_in_t* addr);
-void			print_address(const t_ping* ping, uint32_t addr);
+void			print_address_serialized(const t_ping* ping, uint32_t addr);
+void			print_address_struct(const t_ping* ping, const address_in_t* addr);
 
 // socket.c
 int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs);
 
-// ping_pong.c
-int	ping_pong(t_ping* ping);
+// ping_session.c
+int	ping_session(t_ping* ping);
 
 // ping_sender.c
 int	send_request(t_ping* ping, uint16_t sequence);
@@ -234,16 +245,14 @@ int	send_request(t_ping* ping, uint16_t sequence);
 // pong_receiver.c
 t_received_result	receive_reply(const t_ping* ping, t_acceptance* acceptance);
 
-// ip_options.c
-void	print_ip_timestamp(const t_ping* ping, const t_acceptance* acceptance);
-
 // protocol_ip.c
-void		flip_endian_ip(void* mem);
+void		flip_endian_ip(ip_header_t* header);
+size_t		ihl_to_octets(size_t ihl);
 
 // protocol_icmp.c
-void		flip_endian_icmp(void* mem);
+void		flip_endian_icmp(icmp_header_t* header);
 uint16_t	derive_icmp_checksum(const void* datagram, size_t len);
-bool		is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_whole_len);
+bool		is_valid_icmp_checksum(const t_ping* ping, icmp_header_t* icmp_header, size_t icmp_datagram_size);
 void		construct_icmp_datagram(
 	const t_ping* ping,
 	uint8_t* datagram_buffer,
@@ -251,21 +260,20 @@ void		construct_icmp_datagram(
 	uint16_t sequence
 );
 
-// unexpected_icmp.c
-void	print_unexpected_icmp(const t_ping* ping, t_acceptance* acceptance);
-void	print_time_exceeded_line(
-	const t_ping* ping,
-	const ip_header_t* ip_header,
-	ip_header_t* original_ip,
-	size_t icmp_whole_len,
-	size_t original_icmp_whole_len
-);
+// print_echo_reply.c
+void	print_echo_reply(const t_ping* ping, const t_acceptance* acceptance, double triptime);
 
-// validator.c
-bool	assimilate_echo_reply(const t_ping* ping, t_acceptance* acceptance);
+// print_time_exceeded.c
+void	print_time_exceeded(const t_ping* ping, const t_acceptance* acceptance);
+
+// print_ip_timestamp.c
+void		print_ip_timestamp(const t_ping* ping, const t_acceptance* acceptance);
+
+// analyze_received_datagram.c
+bool	analyze_received_datagram(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
-double	mark_received(t_ping* ping, const t_acceptance* acceptance);
+double	record_received(t_ping* ping, const t_acceptance* acceptance);
 void	print_stats(const t_ping* ping);
 
 // utils_math.c
