@@ -14,7 +14,7 @@ void	print_echo_reply(
 		icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
 		ip_header->IP_HEADER_TTL
 	);
-	if (ping->sending_timestamp) {
+	if (ping->prefs.sending_timestamp && triptime >= 0) {
 		printf(" time=%.3f ms", triptime);
 	}
 	printf("\n");

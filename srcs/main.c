@@ -4,30 +4,33 @@
 int	g_is_little_endian;
 // NOTE: エンディアン変換時に参照する
 
+static t_preferences	determine_preference(char **argv) {
+	t_preferences	pref = {};
+	if (!make_preference(argv, &pref)) {
+		exit(STATUS_OPERAND_FAILED);
+	}
+	return pref;
+}
+
 int main(int argc, char **argv) {
 	(void)argc;
-	if (*argv == NULL) {
-		return STATUS_GENERIC_FAILED;
-	}
 
 	// 最初にシステムのエンディアンを求める
 	g_is_little_endian = is_little_endian();
 
+	if (*argv == NULL) {
+		exit(STATUS_GENERIC_FAILED);
+	}
 	// NOTE: プログラム名は使用しないので飛ばす
 	argv += 1;
 
-	t_preferences	pref = {};
-	int				n_parsed_args = make_preference(argv, &pref);
-	if (n_parsed_args < 0) {
-		return STATUS_OPERAND_FAILED;
-	}
+	const t_preferences	pref = determine_preference(argv);
 	if (pref.show_usage) {
 		print_usage();
-		return STATUS_SUCCEEDED;
+		exit(STATUS_SUCCEEDED);
 	}
 
-	argv += n_parsed_args;
-
+	argv += pref.parsed_arguments;
 	const int status = ping_run(&pref, argv);
 	DEBUGWARN("finished: status: %d", status);
 	return status;

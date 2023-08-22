@@ -32,11 +32,24 @@ SRCS	:=	$(FILES:%.c=$(SRCDIR)/%.c)
 OBJS	:=	$(FILES:%.c=$(OBJDIR)/%.o)
 NAME	:=	ft_ping
 
+SENDER			:=	packet_sender
+SENDER_FILES	:=	\
+					packet_sender.c\
+					protocol_icmp.c\
+					protocol_ip.c\
+					utils_endian.c\
+
+SENDER_SRCS		:=	$(SENDER_FILES:%.c=$(SRCDIR)/%.c)
+SENDER_OBJS		:=	$(SENDER_FILES:%.c=$(OBJDIR)/%.o)
+
 LIBFT		:=	libft.a
 LIBFT_DIR	:=	libft
 CC			:=	gcc
-CCOREFLAGS	=	-Wall -Wextra -Werror -O2 -I$(INCDIR) -I$(LIBFT_DIR)
-CFLAGS		=	$(CCOREFLAGS) -D DEBUG -g -fsanitize=address -fsanitize=undefined
+CCOREFLAGS	=	-Wall -Wextra -Werror -I$(INCDIR) -I$(LIBFT_DIR)
+CFLAGS		=	$(CCOREFLAGS)\
+				-D DEBUG\
+				-g -fsanitize=address -fsanitize=undefined\
+
 RM			:=	rm -rf
 
 all:			$(NAME)
@@ -68,6 +81,9 @@ fclean:			clean
 
 .PHONY:	re
 re:				fclean all
+
+$(SENDER):	$(SENDER_OBJS) $(LIBFT)
+	$(CC) $(CFLAGS) -o $(SENDER) $(SENDER_OBJS) $(LIBFT)
 
 .PHONY:	up
 up:

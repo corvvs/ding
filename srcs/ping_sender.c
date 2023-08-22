@@ -13,7 +13,7 @@ int	send_request(t_ping* ping, uint16_t sequence) {
 		ping->socket,
 		datagram_buffer, actual_datagram_size,
 		0,
-		(struct sockaddr *)addr, sizeof(socket_address_in_t)
+		(socket_address_t*)addr, sizeof(socket_address_in_t)
 	);
 	DEBUGOUT("sendto rv: %d", rv);
 	if (rv < 0) {

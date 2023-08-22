@@ -87,6 +87,14 @@ static bool	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) 
 	return true;
 }
 
+static void	set_inaccessible_ipheader(bool* inaccessible_ipheader) {
+#ifdef __APPLE__
+		(void)inaccessible_ipheader;
+#else
+		*inaccessible_ipheader = true;
+#endif
+}
+
 // ICMPソケットを作成し, そのFDを返す.
 // 失敗した場合は負の値を返す.
 int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) {
@@ -105,11 +113,7 @@ int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) 
 			print_special_error_by_errno("socket");
 			return -1;
 		}
-#ifdef __APPLE__
-		(void)inaccessible_ipheader;
-#else
-		*inaccessible_ipheader = true;
-#endif
+		set_inaccessible_ipheader(inaccessible_ipheader);
 	}
 
 	{	

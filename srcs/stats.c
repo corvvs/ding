@@ -8,12 +8,16 @@ static void	extend_roundtrip_times(t_stat_data* stat_data) {
 	stat_data->roundtrip_times = extended;
 }
 
-static double	push_roundtrip_time(t_stat_data* stat_data, const t_acceptance* acceptance) {
+static double	record_roundtrip_time(t_stat_data* stat_data, const t_acceptance* acceptance) {
 	// NOTE: メモリアライメント違反を防ぐため, 一旦別バッファにコピーしてからアクセスする
 	uint8_t				buffer_sent[sizeof(timeval_t)];
 	const ip_header_t*	ip_header = (const ip_header_t*)acceptance->recv_buffer;
 	const size_t		ip_header_len = ihl_to_octets(ip_header->IP_HEADER_HL);
 	const uint8_t*		received_icmp = acceptance->recv_buffer + ip_header_len;
+	if (ip_header_len + sizeof(icmp_header_t) + sizeof(timeval_t) > acceptance->received_len) {
+		DEBUGWARN("received_len is too short to carry timestamp: received_len: %zu", acceptance->received_len);
+		return -1;
+	}
 	ft_memcpy(buffer_sent, received_icmp + sizeof(icmp_header_t), sizeof(timeval_t));
 
 	const timeval_t*	epoch_sent = (const timeval_t*)buffer_sent;
@@ -83,9 +87,9 @@ static void	print_stats_ribbon(const t_ping* ping) {
 // パケットロスに関する統計データを表示
 static void	print_stats_packet_loss(const t_stat_data* stat_data) {
 	printf("%zu packets transmitted, ", stat_data->sent_icmps);
-	printf("%zu packets received, ", stat_data->received_echo_replies_with_ts);
+	printf("%zu packets received, ", stat_data->received_echo_replies);
 	if (stat_data->sent_icmps > 0) {
-		double gain_rate = (double)stat_data->received_echo_replies_with_ts / stat_data->sent_icmps;
+		double gain_rate = (double)stat_data->received_echo_replies / stat_data->sent_icmps;
 		printf("%d%% packet loss", (int)((1 - gain_rate) * 100));
 	}
 	printf("\n");
@@ -105,23 +109,40 @@ static void	print_stats_latency(const t_stat_data* stat_data) {
 void	print_stats(const t_ping* ping) {
 	print_stats_ribbon(ping);
 	print_stats_packet_loss(&ping->target.stat_data);
-	if (ping->sending_timestamp) {
+	if (ping->prefs.sending_timestamp) {
 		print_stats_latency(&ping->target.stat_data);
 	}
 }
+
 // 受信データグラムの統計情報を記録する
 double	record_received(t_ping* ping, const t_acceptance* acceptance) {
 	t_stat_data*	stat_data = &ping->target.stat_data;
-	stat_data->received_icmps += 1;
 
 	// 受信したICMPデータグラムのタイムスタンプが利用可能なら, ラウンドトリップタイムを取得する
 	const bool	is_echo_reply = acceptance->icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY;
-	if (ping->sending_timestamp && is_echo_reply) {
-		double	rtt = push_roundtrip_time(stat_data, acceptance);
-		stat_data->received_echo_replies_with_ts += 1;
-		return rtt;
-	} else {
-		return 0;
+	if (!is_echo_reply) { return -1; }
+	if (!ping->prefs.sending_timestamp) { return -1; }
+	double	rtt = record_roundtrip_time(stat_data, acceptance);
+	if (rtt < 0) { return -1; }
+	stat_data->received_echo_replies_with_ts += 1;
+	return rtt;
+}
+
+void	record_echo_reply(t_ping* ping, const t_acceptance* acceptance) {
+	t_stat_data*	stat_data = &ping->target.stat_data;
+	stat_data->received_icmps += 1;
+
+	const bool	is_echo_reply = acceptance->icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY;
+	if (!is_echo_reply) { return ; }
+
+	uint16_t	sequence = acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ;
+	size_t		byte_index = sequence / 8;
+	uint32_t	bit_index = sequence % 8;
+	if (ping->target.sequence_field[byte_index] & (1u << bit_index)) {
+		DEBUGWARN("received duplicate echo reply: seq=%u", sequence);
+		return ;
 	}
+	ping->target.sequence_field[byte_index] |= (1u << bit_index);
+	stat_data->received_echo_replies += 1;
 }
 

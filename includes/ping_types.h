@@ -1,5 +1,12 @@
-#ifndef COMPATIBILITY_H
-#define COMPATIBILITY_H
+#ifndef PING_TYPES_H
+#define PING_TYPES_H
+
+#include "ping_libs.h"
+
+typedef struct timeval		timeval_t;
+typedef struct addrinfo		address_info_t;
+typedef struct sockaddr_in	socket_address_in_t;
+typedef struct sockaddr		socket_address_t;
 
 #ifdef __APPLE__
 

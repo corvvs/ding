@@ -65,6 +65,7 @@ void	ping_loop_wait_pong(t_ping* ping, const timeval_t* timeout) {
 	}
 
 	// [受信できた場合は出力]
+	record_echo_reply(ping, &acceptance);
 	const double triptime = record_received(ping, &acceptance);
 	print_received(ping, &acceptance, triptime);
 }

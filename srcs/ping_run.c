@@ -32,7 +32,15 @@ static void	run_sessions(t_ping* ping, char** hosts) {
 	};
 }
 
-int		ping_run(t_preferences* prefs, char** hosts) {
+static bool	received_ipheader_modified(void) {
+#ifdef __APPLE__
+	return true;
+#else
+	return false;
+#endif
+}
+
+int		ping_run(const t_preferences* preference, char** hosts) {
 	if (*hosts == NULL) {
 		print_error_by_message("missing host operand");
 		return STATUS_OPERAND_FAILED; // なぜ 64 なのか
@@ -40,22 +48,18 @@ int		ping_run(t_preferences* prefs, char** hosts) {
 
 	// ソケットは全宛先で使い回すので最初に生成する
 	bool	inaccessible_ipheader = false;
-	int sock = create_socket(&inaccessible_ipheader, prefs);
+	int sock = create_socket(&inaccessible_ipheader, preference);
 	if (sock < 0) {
 		return STATUS_GENERIC_FAILED;
 	}
 
 	t_ping ping = {
-		.socket					= sock,
-		.icmp_header_id			= getpid(),
-		.prefs					= *prefs,
-		// ICMP データサイズが timeval_t のサイズ以上なら, ICMP Echo にタイムスタンプを載せる
-		.sending_timestamp		= prefs->data_size >= sizeof(timeval_t),
-		.inaccessible_ipheader	= inaccessible_ipheader,
+		.socket						= sock,
+		.icmp_header_id				= getpid(),
+		.prefs						= *preference,
+		.inaccessible_ipheader		= inaccessible_ipheader,
+		.received_ipheader_modified	= received_ipheader_modified(),
 	};
-#ifdef __APPLE__
-	ping.received_ipheader_modified = true;
-#endif
 
 	run_sessions(&ping, hosts);
 
