@@ -43,6 +43,7 @@ static bool	received_ipheader_modified(void) {
 int		ping_run(const t_preferences* preference, char** hosts) {
 	if (*hosts == NULL) {
 		print_error_by_message("missing host operand");
+		printf("Try 'ping --help' for more information.\n");
 		return STATUS_OPERAND_FAILED; // なぜ 64 なのか
 	}
 
