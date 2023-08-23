@@ -149,10 +149,9 @@ void	record_echo_reply(t_ping* ping, t_acceptance* acceptance) {
 	uint16_t	sequence = acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ;
 	if (is_sequence_duplicated(ping, sequence)) {
 		DEBUGWARN("received duplicate echo reply: seq=%u", sequence);
-		acceptance->is_duplicate = true;
+		acceptance->is_duplicate_sequence = true;
 		return ;
 	}
 	set_sequence_field(ping, sequence);
 	stat_data->received_echo_replies += 1;
 }
-

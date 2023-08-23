@@ -8,7 +8,9 @@ void	print_echo_reply(
 	const ip_header_t*	ip_header = acceptance->ip_header;
 	icmp_header_t*		icmp_header = acceptance->icmp_header;
 	const size_t		icmp_datagram_size = acceptance->icmp_datagram_size;
-	printf("%zu bytes from %s: icmp_seq=%u ttl=%u",
+
+	printf(
+		"%zu bytes from %s: icmp_seq=%u ttl=%u",
 		icmp_datagram_size,
 		stringify_address(&ip_header->IP_HEADER_SRC),
 		icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ,
@@ -17,7 +19,7 @@ void	print_echo_reply(
 	if (ping->prefs.sending_timestamp && triptime >= 0) {
 		printf(" time=%.3f ms", triptime);
 	}
-	if (acceptance->is_duplicate) {
+	if (acceptance->is_duplicate_sequence) {
 		printf(" (DUP!)");
 	}
 	printf("\n");

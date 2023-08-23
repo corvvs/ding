@@ -32,7 +32,7 @@ typedef struct s_acceptance
 	// 受信時刻
 	timeval_t epoch_received;
 	// 重複フラグ
-	bool is_duplicate;
+	bool is_duplicate_sequence;
 } t_acceptance;
 
 // 統計情報の元データを管理する構造体
