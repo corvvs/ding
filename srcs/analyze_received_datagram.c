@@ -80,6 +80,7 @@ static bool	validate_icmp_is_expected_type(
 ) {
 	(void)ping;
 
+	DEBUGOUT("ICMP_HEADER_TYPE: %u", icmp_header->ICMP_HEADER_TYPE);
 	switch (icmp_header->ICMP_HEADER_TYPE) {
 		case ICMP_TYPE_ECHO_REPLY:
 		case ICMP_TYPE_TIME_EXCEEDED:

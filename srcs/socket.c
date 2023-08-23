@@ -33,8 +33,15 @@ static bool	set_sockopt_timestamp(const t_preferences* prefs, int sock) {
 	return true;
 }
 
-// 設定に従い各種オプションをセット
-static bool	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) {
+// 各種オプションをセット
+static bool	apply_socket_options(const t_preferences* prefs, int sock) {
+	int one = 1; // NOTE: boolean を有効にするには 1 を指定する
+	if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof(one))) {
+		close(sock);
+		print_special_error_by_errno("setsockopt(SO_BROADCAST)");
+		return false;
+	}
+
 	// TTL設定
 	if (prefs->ttl > 0) {
 		if (setsockopt(sock, IPPROTO_IP, IP_TTL, &prefs->ttl, sizeof(prefs->ttl))) {
@@ -53,7 +60,6 @@ static bool	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) 
 
 	// ルーティングを無視する
 	if (prefs->bypass_routing) {
-		int one = 1; // NOTE: boolean を有効にするには 1 を指定する
 		if (setsockopt(sock, SOL_SOCKET, SO_DONTROUTE, &one, sizeof(one))) {
 			print_special_error_by_errno("setsockopt(SO_DONTROUTE)");
 			return false;
@@ -87,6 +93,14 @@ static bool	apply_socket_options_by_prefs(const t_preferences* prefs, int sock) 
 	return true;
 }
 
+static bool	accessible_ipheader(void) {
+#ifdef __APPLE__
+	return false;
+#else
+	return true;
+#endif
+}
+
 // ICMPソケットを作成し, そのFDを返す.
 // 失敗した場合は負の値を返す.
 int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) {
@@ -105,23 +119,10 @@ int create_icmp_socket(bool* inaccessible_ipheader, const t_preferences* prefs) 
 			print_special_error_by_errno("socket");
 			return -1;
 		}
-#ifdef __APPLE__
-		(void)inaccessible_ipheader;
-#else
-		*inaccessible_ipheader = true;
-#endif
+		*inaccessible_ipheader = accessible_ipheader();
 	}
 
-	{	
-		int one = 1;
-		if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char *)&one, sizeof(one))) {
-			close(sock);
-			print_special_error_by_errno("setsockopt(SO_BROADCAST)");
-			return -1;
-		}
-	}
-	// ソケットに対してオプションをセット
-	if (!apply_socket_options_by_prefs(prefs, sock)) {
+	if (!apply_socket_options(prefs, sock)) {
 		close(sock);
 		return -1;
 	}

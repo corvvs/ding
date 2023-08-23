@@ -29,9 +29,10 @@ static bool	should_continue_session(const t_ping* ping, bool receiving_timed_out
 	if (ping->target.error_occurred) {
 		return false;
 	}
-	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, recv_any: %zu, timed_out: %d",
+	DEBUGOUT("count: %zu, sent: %zu, recv: %zu, recv_ts: %zu, recv_any: %zu, timed_out: %d",
 		ping->prefs.count,
 		ping->target.stat_data.sent_icmps,
+		ping->target.stat_data.received_echo_replies,
 		ping->target.stat_data.received_echo_replies_with_ts,
 		ping->target.stat_data.received_icmps,
 		receiving_timed_out);
@@ -64,12 +65,16 @@ void	ping_loop(t_ping* ping) {
 
 	t_session*		target = &ping->target;
 	// タイムアウトの計算
+	const timeval_t	echo_ordinary_interval = {
+		.tv_sec		= ping->prefs.echo_interval_s,
+		.tv_usec	= 0,
+	};
 	const timeval_t	ping_interval = ping->prefs.flood
 		? TV_PING_FLOOD_INTERVAL
-		: TV_PING_DEFAULT_INTERVAL;
+		: echo_ordinary_interval;
 	const timeval_t	receiving_timeout = {
-		.tv_sec = ping->prefs.wait_after_final_request_s,
-		.tv_usec = 0,
+		.tv_sec		= ping->prefs.wait_after_final_request_s,
+		.tv_usec	= 0,
 	};
 	target->last_request_sent = get_current_time();
 

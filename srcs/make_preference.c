@@ -24,6 +24,8 @@
 #define OPTION_SIZE(f)           f('s', "size",    pref->data_size, 0, MAX_ICMP_DATASIZE)
 // preload - 0より大きい値がセットされている場合, その数だけ最初に(waitを無視して)連続送信する
 #define OPTION_PRELOAD(f)        f('l', "preload", pref->preload, 0, INT_MAX)
+// ICMP Echo 送信間隔 - セッション開始から指定時間経過するとセッションが終了する
+#define OPTION_INTERVAL(f)        f('i', "interval", pref->echo_interval_s, 1, INT_MAX)
 // セッションタイムアウト - セッション開始から指定時間経過するとセッションが終了する
 #define OPTION_TIMEOUT(f)        f('w', "timeout", pref->session_timeout_s, 1, INT_MAX)
 // 最終送信後タイムアウト - そのセッションの最後のping送信から指定時間経過するとセッションが終了する
@@ -107,6 +109,7 @@ static	int parse_longoption(char*** argv, bool by_root, t_preferences* pref, con
 	OPTION_COUNT(PARSE_NUMBER_LOPT)
 	OPTION_SIZE(PARSE_NUMBER_LOPT)
 	OPTION_PRELOAD(PARSE_NUMBER_LOPT)
+	OPTION_INTERVAL(PARSE_NUMBER_LOPT)
 	OPTION_TIMEOUT(PARSE_NUMBER_LOPT)
 	OPTION_LINGER(PARSE_NUMBER_LOPT)
 	OPTION_TTL(PARSE_NUMBER_LOPT)
@@ -168,6 +171,7 @@ static	int parse_shortoption(char*** argv, bool by_root, t_preferences* pref, co
 			OPTION_COUNT(PARSE_NUMBER_SOPT)
 			OPTION_SIZE(PARSE_NUMBER_SOPT)
 			OPTION_PRELOAD(PARSE_NUMBER_SOPT)
+			OPTION_INTERVAL(PARSE_NUMBER_SOPT)
 			OPTION_TIMEOUT(PARSE_NUMBER_SOPT)
 			OPTION_LINGER(PARSE_NUMBER_SOPT)
 			OPTION_TTL(PARSE_NUMBER_SOPT)
@@ -247,6 +251,7 @@ static t_preferences	default_preferences(void) {
 		.data_size = ICMP_ECHO_DEFAULT_DATAGRAM_SIZE,
 		.ip_ts_type = IP_TST_NONE,
 		.ttl = 64,
+		.echo_interval_s = PING_DEFAULT_INTERVAL_S,
 		.wait_after_final_request_s = 10,
 		.tos = -1,
 	};
@@ -256,15 +261,21 @@ static bool	exec_by_root(void) {
 	return getuid() == 0;
 }
 
+static void	incude_subsiriary_preferences(t_preferences* preference) {
+	preference->sending_timestamp = preference->data_size >= sizeof(timeval_t);
+}
+
 // コマンドライン引数 argv とデフォルト設定から, 実際に使用する設定(preference)を作成する
-int	make_preference(char** argv, t_preferences* pref_ptr) {
+bool	make_preference(char** argv, t_preferences* pref_ptr) {
 	t_preferences	pref = default_preferences();
 
 	const bool		by_root = exec_by_root();
-	int parsed_options = parse_option(argv, by_root, &pref);
-	if (parsed_options < 0) {
-		return -1;
+	int parsed_arguments = parse_option(argv, by_root, &pref);
+	if (parsed_arguments < 0) {
+		return false;
 	}
+	incude_subsiriary_preferences(&pref);
+	pref.parsed_arguments = parsed_arguments;
 	*pref_ptr = pref;
-	return parsed_options;
+	return true;
 }
