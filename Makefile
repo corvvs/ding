@@ -47,8 +47,8 @@ LIBFT_DIR	:=	libft
 CC			:=	gcc
 CCOREFLAGS	=	-Wall -Wextra -Werror -I$(INCDIR) -I$(LIBFT_DIR)
 CFLAGS		=	$(CCOREFLAGS)\
-				-D DEBUG\
-				-g -fsanitize=address -fsanitize=undefined\
+				# -D DEBUG\
+				# -g -fsanitize=address -fsanitize=undefined\
 
 RM			:=	rm -rf
 
