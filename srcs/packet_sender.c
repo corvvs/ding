@@ -4,9 +4,9 @@
 
 int	g_is_little_endian;
 
-static size_t       set_ip_header(void* buffer, const size_t max_buffer_len) {
+static size_t	set_ip_header(void* buffer, const size_t max_buffer_len) {
     (void)max_buffer_len;
-    ip_header_t*    ip_header = (ip_header_t*)buffer;
+    ip_header_t*	ip_header = (ip_header_t*)buffer;
     *ip_header = (ip_header_t){
         .IP_HEADER_VER = 4,
         .IP_HEADER_HL = 5,
@@ -21,9 +21,15 @@ static size_t       set_ip_header(void* buffer, const size_t max_buffer_len) {
 }
 
 // ICMPエコーリプライの作成
-static size_t        create_packet(void* buffer, const size_t max_buffer_len, uint16_t icmp_id_val) {
+static size_t	create_packet(
+	void* buffer,
+	const size_t
+	max_buffer_len,
+	uint16_t icmp_seq_val,
+	uint16_t icmp_id_val
+) {
     (void)max_buffer_len;
-    size_t len = 0;
+    size_t	len = 0;
     len += set_ip_header(buffer, max_buffer_len);
 
     icmp_header_t *icmp = (icmp_header_t *)(buffer + len);
@@ -32,9 +38,8 @@ static size_t        create_packet(void* buffer, const size_t max_buffer_len, ui
     icmp->ICMP_HEADER_TYPE = ICMP_ECHOREPLY;
     icmp->ICMP_HEADER_CODE = 0;
     icmp->ICMP_HEADER_CHECKSUM = 0;
-    uint16_t    seq = 1;
     icmp->ICMP_HEADER_ECHO.ICMP_HEADER_ID = SWAP_NEEDED(icmp_id_val);  // 任意のID
-    icmp->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(seq);  // シーケンス番号
+    icmp->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ = SWAP_NEEDED(icmp_seq_val);  // シーケンス番号
     icmp->ICMP_HEADER_CHECKSUM = derive_icmp_checksum(icmp, icmp_len);
     len += icmp_len;
 
@@ -58,10 +63,16 @@ static int  create_socket(void) {
     return sockfd;
 }
 
-static void send_packet(int sockfd, const char* dest_host, const socket_address_in_t* dest_addr, uint16_t icmp_id_val) {
+static void send_packet(
+	int sockfd,
+	const char* dest_host,
+	const socket_address_in_t* dest_addr,
+	uint16_t icmp_seq_val,
+	uint16_t icmp_id_val
+) {
     unsigned char packet[MAX_PACKET_SIZE] = {};
 
-    const size_t total_len = create_packet(packet, MAX_PACKET_SIZE, icmp_id_val);
+    const size_t total_len = create_packet(packet, MAX_PACKET_SIZE, icmp_seq_val, icmp_id_val);
 
     if (sendto(sockfd, packet, total_len, 0, (socket_address_t *)dest_addr, sizeof(socket_address_in_t)) <= 0) {
         perror("sendto");
@@ -96,8 +107,8 @@ int main(int argc, char *argv[]) {
     int sockfd = create_socket();
     socket_address_in_t dest_addr = create_dest_addr(dest_host);
 
-    for (; send_count > 0; send_count--) {
-        send_packet(sockfd, dest_host, &dest_addr, icmp_id_val);
+    for (int i = 1; i <= send_count; i += 1) {
+        send_packet(sockfd, dest_host, &dest_addr, i, icmp_id_val);
         sleep(sleep_after_sending);
     }
 

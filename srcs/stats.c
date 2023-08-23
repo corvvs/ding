@@ -128,21 +128,31 @@ double	record_received(t_ping* ping, const t_acceptance* acceptance) {
 	return rtt;
 }
 
-void	record_echo_reply(t_ping* ping, const t_acceptance* acceptance) {
+static bool	is_sequence_duplicated(const t_ping* ping, uint16_t sequence) {
+	size_t		byte_index = sequence / 8;
+	uint32_t	bit_index = sequence % 8;
+	return (ping->target.sequence_field[byte_index] & (1u << bit_index)) != 0;
+}
+
+static void	set_sequence_field(t_ping* ping, uint16_t sequence) {
+	size_t		byte_index = sequence / 8;
+	uint32_t	bit_index = sequence % 8;
+	ping->target.sequence_field[byte_index] |= (1u << bit_index);
+}
+
+void	record_echo_reply(t_ping* ping, t_acceptance* acceptance) {
 	t_stat_data*	stat_data = &ping->target.stat_data;
 	stat_data->received_icmps += 1;
 
 	const bool	is_echo_reply = acceptance->icmp_header->ICMP_HEADER_TYPE == ICMP_TYPE_ECHO_REPLY;
 	if (!is_echo_reply) { return ; }
-
 	uint16_t	sequence = acceptance->icmp_header->ICMP_HEADER_ECHO.ICMP_HEADER_SEQ;
-	size_t		byte_index = sequence / 8;
-	uint32_t	bit_index = sequence % 8;
-	if (ping->target.sequence_field[byte_index] & (1u << bit_index)) {
+	if (is_sequence_duplicated(ping, sequence)) {
 		DEBUGWARN("received duplicate echo reply: seq=%u", sequence);
+		acceptance->is_duplicate = true;
 		return ;
 	}
-	ping->target.sequence_field[byte_index] |= (1u << bit_index);
+	set_sequence_field(ping, sequence);
 	stat_data->received_echo_replies += 1;
 }
 

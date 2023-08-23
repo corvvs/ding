@@ -17,5 +17,8 @@ void	print_echo_reply(
 	if (ping->prefs.sending_timestamp && triptime >= 0) {
 		printf(" time=%.3f ms", triptime);
 	}
+	if (acceptance->is_duplicate) {
+		printf(" (DUP!)");
+	}
 	printf("\n");
 }

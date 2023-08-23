@@ -78,7 +78,7 @@ bool	analyze_received_datagram(const t_ping* ping, t_acceptance* acceptance);
 
 // stats.c
 double	record_received(t_ping* ping, const t_acceptance* acceptance);
-void	record_echo_reply(t_ping* ping, const t_acceptance* acceptance);
+void	record_echo_reply(t_ping* ping, t_acceptance* acceptance);
 void	print_stats(const t_ping* ping);
 
 // utils_math.c
