@@ -3,7 +3,7 @@
 ## VMで`sudo`なしで動かす方法
 
 1. まずビルドする
-2. `chown root ft_ping`
+2. `sudo chown root ft_ping`
 3. `sudo chmod u+s ft_ping`
 
 でいけるはず。
